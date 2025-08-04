@@ -1,0 +1,181 @@
+'use client';
+
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { useTransition } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { db, storage } from '@/lib/firebase';
+import { summarizeIssue } from '@/ai/flows/summarize-issue';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2 } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+
+const formSchema = z.object({
+    consoleType: z.string().min(1, 'Console type is required.'),
+    serialNumber: z.string().min(1, 'Serial number is required.'),
+    color: z.string().min(1, 'Color is required.'),
+    storageCapacity: z.coerce.number().positive('Storage capacity must be a positive number.'),
+    issueType: z.enum(["Doesn't power on", "HDMI port broken", "Overheating", "Disk not reading"]),
+    additionalNotes: z.string().optional(),
+    pastRepairs: z.enum(['Yes', 'No']),
+    photos: z.custom<FileList>()
+        .refine((files) => files.length <= 3, 'You can upload up to 3 photos.')
+        .refine((files) => Array.from(files).every(file => file.size <= MAX_FILE_SIZE), `Max file size is 5MB.`)
+        .refine((files) => Array.from(files).every(file => ACCEPTED_IMAGE_TYPES.includes(file.type)),
+            ".jpg, .jpeg, .png and .webp files are accepted."
+        )
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
+interface AddConsoleFormProps {
+    onFormSubmit: () => void;
+}
+
+export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
+    const { user } = useAuth();
+    const { toast } = useToast();
+    const [isPending, startTransition] = useTransition();
+
+    const form = useForm<FormValues>({
+        resolver: zodResolver(formSchema),
+        defaultValues: {
+            additionalNotes: '',
+        }
+    });
+
+    const readFileAsDataURL = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
+
+    const onSubmit = (values: FormValues) => {
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to submit.' });
+            return;
+        }
+
+        startTransition(async () => {
+            try {
+                // 1. Handle photo uploads and AI summary
+                const photoFiles = Array.from(values.photos);
+                let photoDataUris: string[] = [];
+                if (photoFiles.length > 0) {
+                   photoDataUris = await Promise.all(photoFiles.map(file => readFileAsDataURL(file)));
+                }
+
+                let aiSummary = 'No summary generated.';
+                if (photoDataUris.length > 0 || values.additionalNotes) {
+                     try {
+                        const summaryResult = await summarizeIssue({
+                            photoDataUris,
+                            userNotes: `${values.issueType}. ${values.additionalNotes}`
+                        });
+                        aiSummary = summaryResult.summary;
+                    } catch (aiError) {
+                        console.error("AI summarization failed:", aiError);
+                        aiSummary = "AI summary failed. Proceeding with user notes.";
+                    }
+                }
+                
+                // 2. Upload photos to Firebase Storage
+                const photoURLs = await Promise.all(
+                    photoFiles.map(async (file) => {
+                        const photoId = uuidv4();
+                        const storageRef = ref(storage, `consoles/${user.uid}/${photoId}-${file.name}`);
+                        await uploadBytes(storageRef, file);
+                        return getDownloadURL(storageRef);
+                    })
+                );
+
+                // 3. Save console data to Firestore
+                await addDoc(collection(db, 'consoles'), {
+                    userId: user.uid,
+                    ...values,
+                    photos: photoURLs,
+                    aiSummary,
+                    status: 'Pending',
+                    submittedAt: serverTimestamp(),
+                });
+
+                toast({ title: 'Success', description: 'Your console has been submitted for repair.' });
+                form.reset();
+                onFormSubmit();
+            } catch (error: any) {
+                console.error(error);
+                toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred.' });
+            }
+        });
+    };
+
+    const photoRef = form.register("photos");
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Add a New Console for Repair</CardTitle>
+                <CardDescription>Fill out the details below to start your repair process.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                        <div className="grid md:grid-cols-2 gap-6">
+                            <FormField control={form.control} name="consoleType" render={({ field }) => (
+                                <FormItem><FormLabel>Console Type</FormLabel><FormControl><Input placeholder="e.g., PlayStation 5" {...field} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                             <FormField control={form.control} name="serialNumber" render={({ field }) => (
+                                <FormItem><FormLabel>Serial Number</FormLabel><FormControl><Input placeholder="Find on back/bottom of console" {...field} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                            <FormField control={form.control} name="color" render={({ field }) => (
+                                <FormItem><FormLabel>Color</FormLabel><FormControl><Input placeholder="e.g., White" {...field} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                             <FormField control={form.control} name="storageCapacity" render={({ field }) => (
+                                <FormItem><FormLabel>Storage Capacity (GB)</FormLabel><FormControl><Input type="number" placeholder="e.g., 825" {...field} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                        </div>
+                        <FormField control={form.control} name="issueType" render={({ field }) => (
+                            <FormItem><FormLabel>Issue Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select the main issue" /></SelectTrigger></FormControl><SelectContent>
+                                <SelectItem value="Doesn't power on">Doesn't power on</SelectItem>
+                                <SelectItem value="HDMI port broken">HDMI port broken</SelectItem>
+                                <SelectItem value="Overheating">Overheating</SelectItem>
+                                <SelectItem value="Disk not reading">Disk not reading</SelectItem>
+                            </SelectContent></Select><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="additionalNotes" render={({ field }) => (
+                            <FormItem><FormLabel>Additional Notes (Optional)</FormLabel><FormControl><Textarea placeholder="Describe the issue in more detail..." {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="pastRepairs" render={({ field }) => (
+                             <FormItem><FormLabel>Past Repairs</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Has this console been repaired before?" /></SelectTrigger></FormControl><SelectContent>
+                                <SelectItem value="No">No</SelectItem>
+                                <SelectItem value="Yes">Yes</SelectItem>
+                            </SelectContent></Select><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="photos" render={({ field }) => (
+                            <FormItem><FormLabel>Upload Photos (Up to 3)</FormLabel><FormControl><Input type="file" multiple accept="image/*" {...photoRef} /></FormControl><FormMessage /></FormItem>
+                        )} />
+
+                        <Button type="submit" disabled={isPending}>
+                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Submit for Repair
+                        </Button>
+                    </form>
+                </Form>
+            </CardContent>
+        </Card>
+    );
+}
