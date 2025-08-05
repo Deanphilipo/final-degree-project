@@ -21,27 +21,12 @@ export function Header() {
           <Link href="/#contact">Contact</Link>
         </nav>
         <div className="flex flex-1 items-center justify-end space-x-4">
-          {!loading && (
-            <>
-              {user ? (
-                <>
-                  <Button variant="ghost" asChild>
-                    <Link href={isAdmin ? "/admin" : "/dashboard"}>Dashboard</Link>
-                  </Button>
-                  <Button onClick={() => auth.signOut()}>Sign Out</Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="ghost" asChild>
-                    <Link href="/auth">Sign In</Link>
-                  </Button>
-                  <Button asChild>
-                    <Link href="/auth?mode=signup">Sign Up</Link>
-                  </Button>
-                </>
-              )}
-            </>
-          )}
+            <Button variant="ghost" asChild>
+                <Link href={"/dashboard"}>Dashboard</Link>
+            </Button>
+            <Button variant="ghost" asChild>
+                <Link href={"/admin"}>Admin</Link>
+            </Button>
         </div>
       </div>
     </header>
