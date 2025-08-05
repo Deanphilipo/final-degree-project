@@ -4,7 +4,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
-  title: 'FixMyConsole',
+  title: 'RebootZone',
   description: 'Expert console repair services',
 };
 

@@ -28,7 +28,7 @@ export function Footer() {
           </div>
         </div>
         <div className="mt-8 border-t pt-4 text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} FixMyConsole. All rights reserved.
+          © {new Date().getFullYear()} RebootZone. All rights reserved.
         </div>
       </div>
     </footer>
