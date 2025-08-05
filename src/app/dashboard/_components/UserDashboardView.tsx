@@ -53,10 +53,6 @@ export default function UserDashboardView() {
                 <Plus className="h-4 w-4 mr-2"/>
                 Add Console
             </Button>
-             <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="h-4 w-4 mr-2"/>
-                Logout
-            </Button>
         </nav>
       </header>
       <main className="flex-1 overflow-auto">

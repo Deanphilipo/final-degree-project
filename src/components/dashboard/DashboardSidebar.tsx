@@ -35,8 +35,8 @@ export function DashboardSidebar() {
                 <div className="flex items-center gap-2 p-2 rounded-md bg-muted">
                     <User className="h-5 w-5 text-muted-foreground" />
                     <div className="flex flex-col truncate">
-                        <span className="text-sm font-semibold">User ID</span>
-                        <span className="text-xs text-muted-foreground truncate">{userProfile?.uid || 'guest-user'}</span>
+                        <span className="text-sm font-semibold">USER ID</span>
+                        <span className="text-xs text-muted-foreground truncate">{userProfile?.uid || 'guest-user-placeholder-id'}</span>
                     </div>
                 </div>
             </SidebarMenuItem>
