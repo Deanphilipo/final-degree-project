@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useTransition, Suspense, useEffect } from 'react';
+import { useState, useTransition, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,31 +26,20 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
-const formSchema = z.object({
+const baseSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z
     .string()
     .min(6, { message: 'Password must be at least 6 characters.' }),
-  confirmPassword: z.string().optional(),
 });
 
-const formSchemaWithPasswordConfirmation = formSchema.refine(
-  (data) => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const mode = searchParams.get('mode');
-    if (mode === 'signup') {
-      return data.password === data.confirmPassword;
-    }
-    return true;
-  },
-  {
+const signupSchema = baseSchema.extend({
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ['confirmPassword'],
-  }
-);
+});
 
-
-type FormValues = z.infer<typeof formSchemaWithPasswordConfirmation>;
 
 function AuthFormComponent() {
   const router = useRouter();
@@ -58,8 +48,8 @@ function AuthFormComponent() {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchemaWithPasswordConfirmation),
+  const form = useForm({
+    resolver: zodResolver(mode === 'signup' ? signupSchema : baseSchema),
     defaultValues: {
       email: '',
       password: '',
@@ -67,7 +57,7 @@ function AuthFormComponent() {
     },
   });
 
-  const onSubmit = (values: FormValues) => {
+  const onSubmit = (values: z.infer<typeof baseSchema & typeof signupSchema>) => {
     startTransition(async () => {
       try {
         if (mode === 'signup') {
