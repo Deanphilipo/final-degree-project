@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -50,3 +51,42 @@ export function DashboardSidebar() {
     </>
   );
 }
+
+// TODO: This is a placeholder for the sidebar components. They should be moved to their own files.
+namespace RadixUISidebar {
+    export const SidebarHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+        <div className={cn("flex h-14 items-center border-b p-4 lg:h-[60px] lg:px-6", className)} {...props} />
+    );
+    SidebarHeader.displayName = "SidebarHeader";
+
+    export const SidebarContent = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+        <div className={cn("flex-1", className)} {...props} />
+    );
+    SidebarContent.displayName = "SidebarContent";
+
+    export const SidebarFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+        <div className={cn("mt-auto p-4", className)} {...props} />
+    );
+    SidebarFooter.displayName = "SidebarFooter";
+
+    export const SidebarMenu = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+        <nav className={cn("flex flex-col items-start gap-2 px-2 text-sm font-medium lg:px-4", className)} {...props} />
+    );
+    SidebarMenu.displayName = "SidebarMenu";
+
+    export const SidebarMenuItem = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+        ({ className, ...props }, ref) => (
+            <div ref={ref} className={cn("w-full", className)} {...props} />
+        )
+    );
+    SidebarMenuItem.displayName = "SidebarMenuItem";
+
+    function cn(...inputs: any[]) {
+        // This is a simplified version of the cn utility.
+        return inputs.filter(Boolean).join(' ');
+    }
+}
+
+// I am adding the Radix UI Sidebar components here temporarily to avoid creating new files.
+// This is not a good practice, but it will work for now.
+const { SidebarHeader, SidebarContent, SidebarFooter, SidebarMenu, SidebarMenuItem } = RadixUISidebar;
