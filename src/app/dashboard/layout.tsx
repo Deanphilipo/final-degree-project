@@ -15,7 +15,7 @@ export default function DashboardLayout({
 
   const childrenWithProps = React.Children.map(children, child => {
     if (React.isValidElement(child)) {
-        // @ts-ignore
+      // @ts-ignore
       return React.cloneElement(child, { view, setView });
     }
     return child;
@@ -23,7 +23,7 @@ export default function DashboardLayout({
 
   return (
       <div className="flex min-h-screen">
-        <aside className="w-64 flex-col border-r bg-background p-4 flex">
+        <aside className="w-60 flex-col border-r bg-background flex">
             <DashboardSidebar view={view} setView={setView} />
         </aside>
         <div className="flex-1">
