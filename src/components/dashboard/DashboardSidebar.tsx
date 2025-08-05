@@ -54,6 +54,11 @@ export function DashboardSidebar() {
 
 // TODO: This is a placeholder for the sidebar components. They should be moved to their own files.
 namespace RadixUISidebar {
+    // This is a simplified version of the cn utility.
+    function cn(...inputs: any[]) {
+        return inputs.filter(Boolean).join(' ');
+    }
+    
     export const SidebarHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
         <div className={cn("flex h-14 items-center border-b p-4 lg:h-[60px] lg:px-6", className)} {...props} />
     );
@@ -80,11 +85,6 @@ namespace RadixUISidebar {
         )
     );
     SidebarMenuItem.displayName = "SidebarMenuItem";
-
-    function cn(...inputs: any[]) {
-        // This is a simplified version of the cn utility.
-        return inputs.filter(Boolean).join(' ');
-    }
 }
 
 // I am adding the Radix UI Sidebar components here temporarily to avoid creating new files.
