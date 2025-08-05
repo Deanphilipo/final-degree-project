@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 import type { View } from './_components/UserDashboardView';
 
@@ -27,7 +27,7 @@ export default function DashboardLayout({
             <DashboardSidebar view={view} setView={setView} />
         </aside>
         <div className="flex-1">
-          {children}
+          {childrenWithProps}
         </div>
       </div>
   );
