@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -23,21 +24,34 @@ export function ConsoleList() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) return;
-
-    setLoading(true);
-    const q = query(collection(db, 'consoles'), where('userId', '==', user.uid), orderBy('submittedAt', 'desc'));
-    
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const userConsoles: Console[] = [];
-      querySnapshot.forEach((doc) => {
-        userConsoles.push({ id: doc.id, ...doc.data() } as Console);
+    if (!user) {
+      // Since auth is disabled for viewing, let's load all consoles for demo purposes
+      setLoading(true);
+      const q = query(collection(db, 'consoles'), orderBy('submittedAt', 'desc'));
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const userConsoles: Console[] = [];
+        querySnapshot.forEach((doc) => {
+          userConsoles.push({ id: doc.id, ...doc.data() } as Console);
+        });
+        setConsoles(userConsoles);
+        setLoading(false);
       });
-      setConsoles(userConsoles);
-      setLoading(false);
-    });
+       return () => unsubscribe();
+    } else {
+        setLoading(true);
+        const q = query(collection(db, 'consoles'), where('userId', '==', user.uid), orderBy('submittedAt', 'desc'));
+        
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const userConsoles: Console[] = [];
+          querySnapshot.forEach((doc) => {
+            userConsoles.push({ id: doc.id, ...doc.data() } as Console);
+          });
+          setConsoles(userConsoles);
+          setLoading(false);
+        });
 
-    return () => unsubscribe();
+        return () => unsubscribe();
+    }
   }, [user]);
 
   const getStatusVariant = (status: Console['status']): "default" | "secondary" | "destructive" => {
@@ -69,7 +83,7 @@ export function ConsoleList() {
     return (
         <div className="text-center p-8 border rounded-lg bg-card">
             <h3 className="text-xl font-semibold">No Consoles Submitted</h3>
-            <p className="text-muted-foreground mt-2">Click the '+' icon to add your first repair.</p>
+            <p className="text-muted-foreground mt-2">Click the 'Add Console' button to submit your first repair.</p>
         </div>
     );
   }
@@ -80,9 +94,10 @@ export function ConsoleList() {
             <Table>
                 <TableHeader>
                 <TableRow>
-                    <TableHead>Console Type</TableHead>
+                    <TableHead>Console</TableHead>
                     <TableHead>Serial Number</TableHead>
                     <TableHead>Issue</TableHead>
+                    <TableHead>Past Repairs</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Date Submitted</TableHead>
                 </TableRow>
@@ -90,7 +105,10 @@ export function ConsoleList() {
                 <TableBody>
                 {consoles.map((c) => (
                     <TableRow key={c.id}>
-                        <TableCell className="font-medium">{c.consoleType}</TableCell>
+                        <TableCell>
+                          <div className="font-medium">{c.consoleType}</div>
+                          <div className="text-xs text-muted-foreground">{c.color} - {c.storageCapacity}GB</div>
+                        </TableCell>
                         <TableCell>{c.serialNumber}</TableCell>
                         <TableCell>
                             <Tooltip>
@@ -103,6 +121,7 @@ export function ConsoleList() {
                                 </TooltipContent>
                             </Tooltip>
                         </TableCell>
+                        <TableCell>{c.pastRepairs}</TableCell>
                         <TableCell>
                             <Badge variant={getStatusVariant(c.status)}>{c.status}</Badge>
                         </TableCell>
@@ -117,3 +136,4 @@ export function ConsoleList() {
     </div>
   );
 }
+
