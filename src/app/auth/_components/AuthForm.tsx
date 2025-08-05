@@ -30,9 +30,26 @@ const formSchema = z.object({
   password: z
     .string()
     .min(6, { message: 'Password must be at least 6 characters.' }),
+  confirmPassword: z.string().optional(),
 });
 
-type FormValues = z.infer<typeof formSchema>;
+const formSchemaWithPasswordConfirmation = formSchema.refine(
+  (data) => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const mode = searchParams.get('mode');
+    if (mode === 'signup') {
+      return data.password === data.confirmPassword;
+    }
+    return true;
+  },
+  {
+    message: "Passwords don't match",
+    path: ['confirmPassword'],
+  }
+);
+
+
+type FormValues = z.infer<typeof formSchemaWithPasswordConfirmation>;
 
 function AuthFormComponent() {
   const router = useRouter();
@@ -42,10 +59,11 @@ function AuthFormComponent() {
   const { toast } = useToast();
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchemaWithPasswordConfirmation),
     defaultValues: {
       email: '',
       password: '',
+      confirmPassword: '',
     },
   });
 
@@ -118,6 +136,21 @@ function AuthFormComponent() {
               </FormItem>
             )}
           />
+          {mode === 'signup' && (
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirm Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
           <Button type="submit" className="w-full" disabled={isPending}>
             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {mode === 'signup' ? 'Sign Up' : 'Sign In'}
