@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -52,6 +53,10 @@ export default function UserDashboardView() {
             <Button variant={view === 'add' ? 'secondary' : 'ghost'} size="sm" onClick={() => setView('add')}>
                 <Plus className="h-4 w-4 mr-2"/>
                 Add Console
+            </Button>
+             <Button variant="ghost" size="sm" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2"/>
+                Logout
             </Button>
         </nav>
       </header>
