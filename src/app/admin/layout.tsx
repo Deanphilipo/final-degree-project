@@ -10,7 +10,7 @@ export default function AdminLayout({
 
   return (
       <div className="flex min-h-screen">
-        <aside className="w-64 flex-col border-r bg-background p-4 hidden md:flex">
+        <aside className="w-64 flex-col border-r bg-background p-4 flex">
             <DashboardSidebar />
         </aside>
         <div className="flex-1">
