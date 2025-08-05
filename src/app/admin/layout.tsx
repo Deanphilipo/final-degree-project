@@ -1,6 +1,5 @@
 'use client';
 
-import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
 
 export default function AdminLayout({
@@ -10,15 +9,13 @@ export default function AdminLayout({
 }) {
 
   return (
-    <SidebarProvider>
-        <div className="flex min-h-screen">
-            <Sidebar>
-                <DashboardSidebar />
-            </Sidebar>
-            <SidebarInset className="flex-1">
-                {children}
-            </SidebarInset>
+      <div className="flex min-h-screen">
+        <aside className="w-64 flex-col border-r bg-background p-4 hidden md:flex">
+            <DashboardSidebar />
+        </aside>
+        <div className="flex-1">
+          {children}
         </div>
-    </SidebarProvider>
+      </div>
   );
 }
