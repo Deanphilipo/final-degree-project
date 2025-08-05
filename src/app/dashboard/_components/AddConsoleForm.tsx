@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -66,10 +67,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
     }
 
     const onSubmit = (values: FormValues) => {
-        if (!user) {
-            toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to submit.' });
-            return;
-        }
+        const userId = user?.uid || 'guest-user'; // Use a placeholder if not logged in
 
         startTransition(async () => {
             try {
@@ -98,7 +96,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                 const photoURLs = await Promise.all(
                     photoFiles.map(async (file) => {
                         const photoId = uuidv4();
-                        const storageRef = ref(storage, `consoles/${user.uid}/${photoId}-${file.name}`);
+                        const storageRef = ref(storage, `consoles/${userId}/${photoId}-${file.name}`);
                         await uploadBytes(storageRef, file);
                         return getDownloadURL(storageRef);
                     })
@@ -106,7 +104,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
 
                 // 3. Save console data to Firestore
                 await addDoc(collection(db, 'consoles'), {
-                    userId: user.uid,
+                    userId: userId,
                     ...values,
                     photos: photoURLs,
                     aiSummary,
