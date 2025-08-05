@@ -5,11 +5,17 @@ import { Logo } from '@/components/Logo';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/firebase';
-import { User, LogOut } from 'lucide-react';
+import { User, LogOut, Home, HelpCircle, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import React from 'react';
+import type { View } from '@/app/dashboard/_components/UserDashboardView';
 
-export function DashboardSidebar() {
+interface DashboardSidebarProps {
+    view: View;
+    setView: (view: View) => void;
+}
+
+export function DashboardSidebar({ view, setView }: DashboardSidebarProps) {
   const { userProfile } = useAuth();
   const router = useRouter();
 
@@ -33,6 +39,24 @@ export function DashboardSidebar() {
                         <span className="text-xs text-muted-foreground truncate">{userProfile?.uid || 'guest-user-placeholder-id'}</span>
                     </div>
                 </div>
+            </li>
+            <li className="w-full mt-4">
+                <Button variant={view === 'home' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setView('home')}>
+                    <Home className="h-4 w-4 mr-2"/>
+                    Home
+                </Button>
+            </li>
+             <li className="w-full">
+                <Button variant={view === 'faq' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setView('faq')}>
+                    <HelpCircle className="h-4 w-4 mr-2"/>
+                    FAQ
+                </Button>
+            </li>
+             <li className="w-full">
+                <Button variant={view === 'add' ? 'secondary' : 'ghost'} className="w-full justify-start" onClick={() => setView('add')}>
+                    <Plus className="h-4 w-4 mr-2"/>
+                    Add Console
+                </Button>
             </li>
         </ul>
       </div>
