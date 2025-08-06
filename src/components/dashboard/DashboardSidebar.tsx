@@ -1,13 +1,13 @@
 
 'use client';
 
+import React from 'react';
 import { Logo } from '@/components/Logo';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/firebase';
 import { User, LogOut, Home, HelpCircle, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import React from 'react';
 import type { View } from '@/app/dashboard/_components/UserDashboardView';
 
 interface DashboardSidebarProps {
@@ -36,7 +36,7 @@ export function DashboardSidebar({ view, setView }: DashboardSidebarProps) {
                     <User className="h-5 w-5 text-muted-foreground" />
                     <div className="flex flex-col truncate">
                         <span className="text-sm font-semibold">USER ID</span>
-                        <span className="text-xs text-muted-foreground truncate">{userProfile?.uid || 'guest-user-placeholder-id'}</span>
+                        <span className="text-xs text-muted-foreground truncate">{userProfile?.uid}</span>
                     </div>
                 </div>
             </li>
