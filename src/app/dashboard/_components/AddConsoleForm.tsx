@@ -67,7 +67,11 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
     }
 
     const onSubmit = (values: FormValues) => {
-        const userId = user?.uid || 'guest-user'; // Use a placeholder if not logged in
+        if (!user) {
+            toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to submit a console.' });
+            return;
+        }
+        const userId = user.uid;
 
         startTransition(async () => {
             try {

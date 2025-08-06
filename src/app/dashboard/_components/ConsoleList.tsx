@@ -17,42 +17,39 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useRouter } from 'next/navigation';
 
 export function ConsoleList() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [consoles, setConsoles] = useState<Console[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
-    if (!user) {
-      // Since auth is disabled for viewing, let's load all consoles for demo purposes
-      setLoading(true);
-      const q = query(collection(db, 'consoles'), orderBy('submittedAt', 'desc'));
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const userConsoles: Console[] = [];
-        querySnapshot.forEach((doc) => {
-          userConsoles.push({ id: doc.id, ...doc.data() } as Console);
-        });
-        setConsoles(userConsoles);
-        setLoading(false);
-      });
-       return () => unsubscribe();
-    } else {
-        setLoading(true);
-        const q = query(collection(db, 'consoles'), where('userId', '==', user.uid), orderBy('submittedAt', 'desc'));
-        
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-          const userConsoles: Console[] = [];
-          querySnapshot.forEach((doc) => {
-            userConsoles.push({ id: doc.id, ...doc.data() } as Console);
-          });
-          setConsoles(userConsoles);
-          setLoading(false);
-        });
+    if (authLoading) return; // Wait for auth state to be determined
 
-        return () => unsubscribe();
+    if (!user) {
+      router.push('/auth');
+      return;
     }
-  }, [user]);
+
+    setLoading(true);
+    const q = query(collection(db, 'consoles'), where('userId', '==', user.uid), orderBy('submittedAt', 'desc'));
+    
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const userConsoles: Console[] = [];
+      querySnapshot.forEach((doc) => {
+        userConsoles.push({ id: doc.id, ...doc.data() } as Console);
+      });
+      setConsoles(userConsoles);
+      setLoading(false);
+    }, (error) => {
+        console.error("Error fetching consoles:", error);
+        setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user, authLoading, router]);
 
   const getStatusVariant = (status: Console['status']): "default" | "secondary" | "destructive" => {
     switch (status) {
@@ -69,7 +66,7 @@ export function ConsoleList() {
     }
   };
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
         <div className="space-y-4">
             <Skeleton className="h-24 w-full" />
@@ -136,4 +133,3 @@ export function ConsoleList() {
     </div>
   );
 }
-
