@@ -10,7 +10,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import type { UserProfile } from '@/types';
 
 const baseSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -79,12 +80,32 @@ function AuthFormComponent() {
           });
           router.push('/auth');
         } else {
-          await signInWithEmailAndPassword(auth, values.email, values.password);
-          toast({
-            title: 'Signed In',
-            description: 'Welcome back!',
-          });
-          router.push('/dashboard');
+          const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
+          const user = userCredential.user;
+
+          // Fetch user profile to check role
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDoc = await getDoc(userDocRef);
+
+          if (userDoc.exists()) {
+              const userProfile = userDoc.data() as UserProfile;
+              toast({
+                title: 'Signed In',
+                description: 'Welcome back!',
+              });
+              if (userProfile.role === 'admin') {
+                  router.push('/admin');
+              } else {
+                  router.push('/dashboard');
+              }
+          } else {
+              // Fallback if profile doesn't exist for some reason
+              toast({
+                title: 'Signed In',
+                description: 'Welcome back!',
+              });
+              router.push('/dashboard');
+          }
         }
       } catch (error: any) {
         toast({
