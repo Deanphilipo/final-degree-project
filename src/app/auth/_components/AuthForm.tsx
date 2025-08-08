@@ -108,11 +108,19 @@ function AuthFormComponent() {
           }
         }
       } catch (error: any) {
-        toast({
-          variant: 'destructive',
-          title: 'Authentication Error',
-          description: error.message || 'An unexpected error occurred.',
-        });
+        if (error.message.includes('offline')) {
+             toast({
+                variant: 'destructive',
+                title: 'Database Error',
+                description: 'Could not connect to the database. This is likely due to Firestore security rules. Please allow read access to the "users" collection.',
+             });
+        } else {
+            toast({
+              variant: 'destructive',
+              title: 'Authentication Error',
+              description: error.message || 'An unexpected error occurred.',
+            });
+        }
       }
     });
   };
