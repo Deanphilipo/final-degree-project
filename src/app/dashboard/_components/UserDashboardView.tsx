@@ -30,9 +30,9 @@ export default function UserDashboardView() {
 
   return (
     <div className="flex h-full">
-        <div className="w-60 flex-col border-r bg-background flex">
+        <aside className="w-60 flex-col border-r bg-background flex">
            <DashboardSidebar view={view} setView={setView} />
-        </div>
+        </aside>
         <div className="flex-1 flex flex-col">
             <header className="sticky top-0 z-10 flex h-[57px] items-center gap-1 border-b bg-background px-4">
                 <h1 className="text-xl font-semibold">Dashboard</h1>

@@ -4,5 +4,9 @@
 import UserDashboardView from "./_components/UserDashboardView";
 
 export default function DashboardPage() {
-    return <UserDashboardView />;
+    return (
+        <div className="h-screen">
+            <UserDashboardView />
+        </div>
+    );
 }
