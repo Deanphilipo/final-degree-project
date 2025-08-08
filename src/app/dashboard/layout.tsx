@@ -1,33 +1,21 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
-import type { View } from './_components/UserDashboardView';
-
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [view, setView] = useState<View>('home');
-
-  const childrenWithProps = React.Children.map(children, child => {
-    if (React.isValidElement(child)) {
-      // @ts-ignore
-      return React.cloneElement(child, { view, setView });
-    }
-    return child;
-  });
-
   return (
       <div className="flex min-h-screen">
         <aside className="w-60 flex-col border-r bg-background flex">
-            <DashboardSidebar view={view} setView={setView} />
+            {/* The sidebar is now part of the page and will be rendered by children */}
         </aside>
         <div className="flex-1">
-          {childrenWithProps}
+          {children}
         </div>
       </div>
   );
