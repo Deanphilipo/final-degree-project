@@ -53,7 +53,14 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
+            consoleType: '',
+            serialNumber: '',
+            color: '',
+            storageCapacity: 0,
+            issueType: undefined,
             additionalNotes: '',
+            pastRepairs: undefined,
+            photos: undefined,
         }
     });
 
@@ -148,7 +155,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                                 <FormItem><FormLabel>Color</FormLabel><FormControl><Input placeholder="e.g., White" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                              <FormField control={form.control} name="storageCapacity" render={({ field }) => (
-                                <FormItem><FormLabel>Storage Capacity (GB)</FormLabel><FormControl><Input type="number" placeholder="e.g., 825" {...field} /></FormControl><FormMessage /></FormItem>
+                                <FormItem><FormLabel>Storage Capacity (GB)</FormLabel><FormControl><Input type="number" placeholder="e.g., 825" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
                             )} />
                         </div>
                         <FormField control={form.control} name="issueType" render={({ field }) => (

@@ -69,7 +69,15 @@ export function AdminAddConsoleForm() {
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
+            userId: '',
+            consoleType: '',
+            serialNumber: '',
+            color: '',
+            storageCapacity: 0,
+            issueType: undefined,
             additionalNotes: '',
+            pastRepairs: undefined,
+            photos: undefined,
         }
     });
 
