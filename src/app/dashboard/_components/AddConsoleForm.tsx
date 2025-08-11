@@ -7,7 +7,7 @@ import * as z from 'zod';
 import { useTransition } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, getDocs, query, serverTimestamp, where } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { summarizeIssue } from '@/ai/flows/summarize-issue';
@@ -82,6 +82,20 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
 
         startTransition(async () => {
             try {
+                // 0. Check for duplicate serial number
+                const consolesRef = collection(db, 'consoles');
+                const q = query(consolesRef, where('serialNumber', '==', values.serialNumber));
+                const querySnapshot = await getDocs(q);
+
+                if (!querySnapshot.empty) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Duplicate Serial Number',
+                        description: 'A console with this serial number has already been submitted.',
+                    });
+                    return;
+                }
+
                 // 1. Handle photo uploads and AI summary
                 const photoFiles = Array.from(values.photos);
                 let photoDataUris: string[] = [];

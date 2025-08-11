@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -6,7 +7,7 @@ import * as z from 'zod';
 import { useEffect, useState, useTransition } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { addDoc, collection, getDocs, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, getDocs, serverTimestamp, query, where } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { summarizeIssue } from '@/ai/flows/summarize-issue';
@@ -98,6 +99,20 @@ export function AdminAddConsoleForm() {
 
         startTransition(async () => {
             try {
+                 // 0. Check for duplicate serial number
+                const consolesRef = collection(db, 'consoles');
+                const q = query(consolesRef, where('serialNumber', '==', values.serialNumber));
+                const querySnapshot = await getDocs(q);
+
+                if (!querySnapshot.empty) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Duplicate Serial Number',
+                        description: 'A console with this serial number has already been submitted.',
+                    });
+                    return;
+                }
+
                 // 1. Handle photo uploads and AI summary
                 const photoFiles = values.photos ? Array.from(values.photos) : [];
                 let photoDataUris: string[] = [];
@@ -130,9 +145,8 @@ export function AdminAddConsoleForm() {
                 );
 
                 // 3. Save console data to Firestore
-                const { userId, ...consoleData } = values;
+                const { photos, ...consoleData } = values;
                 await addDoc(collection(db, 'consoles'), {
-                    userId: userId,
                     ...consoleData,
                     photos: photoURLs,
                     aiSummary,
