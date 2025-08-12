@@ -20,7 +20,6 @@ import { Loader2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { UserProfile } from '@/types';
 import { useRouter } from 'next/navigation';
-import { summarizeIssue } from '@/ai/flows/summarize-issue';
 
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -47,13 +46,6 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
-
-const fileToDataUri = (file: File) => new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-});
 
 
 export function AdminAddConsoleForm() {
@@ -132,22 +124,6 @@ export function AdminAddConsoleForm() {
                         return;
                     }
                 }
-                
-                const photoDataUris = await Promise.all(photoFiles.map(fileToDataUri));
-
-                let aiSummary = 'No photos or notes provided for summary.';
-                if (photoDataUris.length > 0 || values.additionalNotes) {
-                  try {
-                    const summaryResult = await summarizeIssue({
-                      photoDataUris,
-                      userNotes: `${values.issueType}. ${values.additionalNotes || ''}`,
-                    });
-                    aiSummary = summaryResult.summary;
-                  } catch (e) {
-                    console.error("AI summarization failed:", e);
-                    aiSummary = "AI summarization failed.";
-                  }
-                }
 
                 const photoURLs = await Promise.all(
                     photoFiles.map(async (file) => {
@@ -163,7 +139,6 @@ export function AdminAddConsoleForm() {
                 await addDoc(collection(db, 'consoles'), {
                     ...consoleData,
                     photos: photoURLs,
-                    aiSummary: aiSummary,
                     status: 'Pending',
                     submittedAt: serverTimestamp(),
                 });

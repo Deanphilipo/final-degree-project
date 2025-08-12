@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
@@ -16,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Edit, Trash, Bot } from 'lucide-react';
+import { Edit, Trash } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -157,7 +158,6 @@ export function AdminConsoleList() {
                                 <TooltipContent>
                                     <p><strong>Issue:</strong> {c.issueType}</p>
                                     {c.additionalNotes && <p><strong>Notes:</strong> {c.additionalNotes}</p>}
-                                    {c.aiSummary && <p className="mt-2 pt-2 border-t"><strong><Bot className="inline h-4 w-4 mr-1"/>AI Summary:</strong> {c.aiSummary}</p>}
                                 </TooltipContent>
                             </Tooltip>
                         </TableCell>

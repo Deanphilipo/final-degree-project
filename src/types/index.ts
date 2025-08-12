@@ -20,7 +20,6 @@ export interface Console {
   photos: string[];
   status: 'Pending' | 'In Progress' | 'Awaiting Parts' | 'Fixed' | 'Cannot be Fixed' | 'Returned';
   submittedAt: Timestamp;
-  aiSummary?: string;
 }
 
 export interface AdminConsole extends Console {
