@@ -67,10 +67,10 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
+            reader.onerror = (error) => reject(error);
             reader.readAsDataURL(file);
         });
-    }
+    };
 
     const onSubmit = (values: FormValues) => {
         if (!user) {
@@ -100,28 +100,31 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                 }
 
                 // 0. Check for duplicate serial number
-                const consolesRef = collection(db, 'consoles');
-                const q = query(consolesRef, where('serialNumber', '==', values.serialNumber));
-                const querySnapshot = await getDocs(q);
+                try {
+                    const consolesRef = collection(db, 'consoles');
+                    const q = query(consolesRef, where('serialNumber', '==', values.serialNumber));
+                    const querySnapshot = await getDocs(q);
 
-                if (!querySnapshot.empty) {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Duplicate Serial Number',
-                        description: 'A console with this serial number has already been submitted.',
-                    });
+                    if (!querySnapshot.empty) {
+                        toast({
+                            variant: 'destructive',
+                            title: 'Duplicate Serial Number',
+                            description: 'A console with this serial number has already been submitted.',
+                        });
+                        return;
+                    }
+                } catch (error) {
+                    console.error("Duplicate check failed:", error);
+                    toast({ variant: 'destructive', title: 'Error', description: 'Could not verify serial number. Please check Firestore permissions.' });
                     return;
                 }
+                
 
-                // 1. Handle photo uploads and AI summary
-                let photoDataUris: string[] = [];
-                if (photoFiles.length > 0) {
-                   photoDataUris = await Promise.all(photoFiles.map(file => readFileAsDataURL(file)));
-                }
-
+                // 1. Handle AI summary
                 let aiSummary = 'No summary generated.';
-                if (photoDataUris.length > 0 || values.additionalNotes) {
+                if (photoFiles.length > 0 || values.additionalNotes) {
                      try {
+                        const photoDataUris = await Promise.all(photoFiles.map(file => readFileAsDataURL(file)));
                         const summaryResult = await summarizeIssue({
                             photoDataUris,
                             userNotes: `${values.issueType}. ${values.additionalNotes}`
@@ -129,19 +132,28 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                         aiSummary = summaryResult.summary;
                     } catch (aiError) {
                         console.error("AI summarization failed:", aiError);
+                        toast({ variant: 'destructive', title: 'AI Error', description: 'The AI summary could not be generated.' });
                         aiSummary = "AI summary failed. Proceeding with user notes.";
                     }
                 }
                 
                 // 2. Upload photos to Firebase Storage
-                const photoURLs = await Promise.all(
-                    photoFiles.map(async (file) => {
-                        const photoId = uuidv4();
-                        const storageRef = ref(storage, `consoles/${userId}/${photoId}-${file.name}`);
-                        await uploadBytes(storageRef, file);
-                        return getDownloadURL(storageRef);
-                    })
-                );
+                let photoURLs: string[] = [];
+                try {
+                    photoURLs = await Promise.all(
+                        photoFiles.map(async (file) => {
+                            const photoId = uuidv4();
+                            const storageRef = ref(storage, `consoles/${userId}/${photoId}-${file.name}`);
+                            await uploadBytes(storageRef, file);
+                            return getDownloadURL(storageRef);
+                        })
+                    );
+                } catch(uploadError) {
+                     console.error("Photo upload failed:", uploadError);
+                     toast({ variant: 'destructive', title: 'Upload Error', description: 'Could not upload photos to storage.' });
+                     return; // Stop submission if photos fail to upload
+                }
+
 
                 // 3. Save console data to Firestore
                 const { photos, ...consoleData } = values;
@@ -157,9 +169,10 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                 toast({ title: 'Success', description: 'Your console has been submitted for repair.' });
                 form.reset();
                 onFormSubmit();
+
             } catch (error: any) {
-                console.error("Submission failed:", error);
-                toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred.' });
+                console.error("A critical error occurred during submission:", error);
+                toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred. Please try again.' });
             }
         });
     };
