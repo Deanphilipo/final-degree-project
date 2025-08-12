@@ -30,7 +30,12 @@ const formSchema = z.object({
     issueType: z.enum(["Doesn't power on", "HDMI port broken", "Overheating", "Disk not reading", "Other"]),
     additionalNotes: z.string().optional(),
     pastRepairs: z.enum(['Yes', 'No']),
-    photos: z.any()
+    photos: z.any().refine(files => files?.length > 0, 'At least one photo is required.')
+    .refine(files => files?.[0]?.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
+    .refine(
+      files => ACCEPTED_IMAGE_TYPES.includes(files?.[0]?.type),
+      ".jpg, .jpeg, .png and .webp files are accepted."
+    )
 }).refine(data => {
     if (data.issueType === 'Other') {
         return data.additionalNotes && data.additionalNotes.trim().length > 0;
@@ -80,7 +85,12 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
             const photoFileList = form.getValues('photos') as FileList | null;
             const photoFiles = photoFileList ? Array.from(photoFileList) : [];
             
-            if (photoFiles.length > 3) {
+            if (photoFiles.length === 0) {
+                form.setError('photos', { type: 'manual', message: 'At least one photo is required.' });
+                setIsSubmitting(false);
+                return;
+            }
+             if (photoFiles.length > 3) {
                 form.setError('photos', { type: 'manual', message: 'You can upload up to 3 photos.' });
                 setIsSubmitting(false);
                 return;
@@ -196,7 +206,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                             name="photos"
                             render={({ field }) => (
                                 <FormItem>
-                                <FormLabel>Upload Photos (Up to 3, Optional)</FormLabel>
+                                <FormLabel>Upload Photos (Up to 3, Required)</FormLabel>
                                 <FormControl>
                                     <Input type="file" multiple accept="image/*" {...photoRef} />
                                 </FormControl>

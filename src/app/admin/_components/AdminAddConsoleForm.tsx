@@ -34,7 +34,12 @@ const formSchema = z.object({
     issueType: z.enum(["Doesn't power on", "HDMI port broken", "Overheating", "Disk not reading", "Other"]),
     additionalNotes: z.string().optional(),
     pastRepairs: z.enum(['Yes', 'No']),
-    photos: z.any()
+    photos: z.any().refine(files => files?.length > 0, 'At least one photo is required.')
+    .refine(files => files?.[0]?.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
+    .refine(
+      files => ACCEPTED_IMAGE_TYPES.includes(files?.[0]?.type),
+      ".jpg, .jpeg, .png and .webp files are accepted."
+    )
 }).refine(data => {
     if (data.issueType === 'Other') {
         return data.additionalNotes && data.additionalNotes.trim().length > 0;
@@ -111,19 +116,24 @@ export function AdminAddConsoleForm() {
             const photoFileList = form.getValues('photos') as FileList | null;
             const photoFiles = photoFileList ? Array.from(photoFileList) : [];
 
-            if (photoFiles.length > 3) {
-                toast({ variant: 'destructive', title: 'Validation Error', description: 'You can upload up to 3 photos.' });
+            if (photoFiles.length === 0) {
+                form.setError('photos', { type: 'manual', message: 'At least one photo is required.' });
+                setIsSubmitting(false);
+                return;
+            }
+             if (photoFiles.length > 3) {
+                form.setError('photos', { type: 'manual', message: 'You can upload up to 3 photos.' });
                 setIsSubmitting(false);
                 return;
             }
             for (const file of photoFiles) {
                 if (file.size > MAX_FILE_SIZE) {
-                    toast({ variant: 'destructive', title: 'Validation Error', description: `Max file size is 5MB.` });
-                    setIsSubmitting(false);
+                     form.setError('photos', { type: 'manual', message: `Max file size is 5MB.` });
+                     setIsSubmitting(false);
                     return;
                 }
                 if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-                    toast({ variant: 'destructive', title: 'Validation Error', description: '.jpg, .jpeg, .png and .webp files are accepted.' });
+                    form.setError('photos', { type: 'manual', message: '.jpg, .jpeg, .png and .webp files are accepted.' });
                     setIsSubmitting(false);
                     return;
                 }
@@ -218,7 +228,7 @@ export function AdminAddConsoleForm() {
                             </SelectContent></Select><FormMessage /></FormItem>
                         )} />
                         <FormField control={form.control} name="photos" render={({ field }) => (
-                            <FormItem><FormLabel>Upload Photos (Up to 3)</FormLabel><FormControl><Input type="file" multiple accept="image/*" {...photoRef} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>Upload Photos (Up to 3, Required)</FormLabel><FormControl><Input type="file" multiple accept="image/*" {...photoRef} /></FormControl><FormMessage /></FormItem>
                         )} />
 
                         <Button type="submit" disabled={isSubmitting}>
