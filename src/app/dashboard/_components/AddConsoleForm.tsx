@@ -35,7 +35,7 @@ const formSchema = z.object({
     pastRepairs: z.enum(['Yes', 'No'], {
         required_error: "You need to select a past repair status.",
     }),
-    photos: z.any().optional(), // Use z.any() and validate in onSubmit
+    // Photos removed from schema, will be handled manually
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -49,7 +49,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
 
-    const form = useForm<FormValues>({
+    const form = useForm<FormValues & { photos?: FileList }>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             consoleType: '',
@@ -62,6 +62,8 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
             photos: undefined,
         }
     });
+    
+    const photoRef = form.register("photos");
 
     const onSubmit = (values: FormValues) => {
         if (!user) {
@@ -73,19 +75,20 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
         startTransition(async () => {
             try {
                 // --- Manual Photo Validation ---
-                const photoFiles = values.photos instanceof FileList ? Array.from(values.photos) : [];
+                const photoFileList = form.getValues('photos');
+                const photoFiles = photoFileList ? Array.from(photoFileList) : [];
                 
                 if (photoFiles.length > 3) {
-                    form.setError('photos', { type: 'manual', message: 'You can upload up to 3 photos.' });
+                    toast({ variant: 'destructive', title: 'Validation Error', description: 'You can upload up to 3 photos.' });
                     return;
                 }
                 for (const file of photoFiles) {
                     if (file.size > MAX_FILE_SIZE) {
-                        form.setError('photos', { type: 'manual', message: `Max file size is 5MB.` });
+                        toast({ variant: 'destructive', title: 'Validation Error', description: `Max file size is 5MB.` });
                         return;
                     }
                     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-                        form.setError('photos', { type: 'manual', message: '.jpg, .jpeg, .png and .webp files are accepted.' });
+                        toast({ variant: 'destructive', title: 'Validation Error', description: '.jpg, .jpeg, .png and .webp files are accepted.' });
                         return;
                     }
                 }
@@ -113,25 +116,26 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                 
                 // 2. Upload photos to Firebase Storage
                 let photoURLs: string[] = [];
-                try {
-                    photoURLs = await Promise.all(
-                        photoFiles.map(async (file) => {
-                            const photoId = uuidv4();
-                            const storageRef = ref(storage, `consoles/${userId}/${photoId}-${file.name}`);
-                            await uploadBytes(storageRef, file);
-                            return getDownloadURL(storageRef);
-                        })
-                    );
-                } catch(uploadError) {
-                     console.error("Photo upload failed:", uploadError);
-                     toast({ variant: 'destructive', title: 'Upload Error', description: 'Could not upload photos to storage.' });
-                     return;
+                if (photoFiles.length > 0) {
+                    try {
+                        photoURLs = await Promise.all(
+                            photoFiles.map(async (file) => {
+                                const photoId = uuidv4();
+                                const storageRef = ref(storage, `consoles/${userId}/${photoId}-${file.name}`);
+                                await uploadBytes(storageRef, file);
+                                return getDownloadURL(storageRef);
+                            })
+                        );
+                    } catch(uploadError) {
+                         console.error("Photo upload failed:", uploadError);
+                         toast({ variant: 'destructive', title: 'Upload Error', description: 'Could not upload photos to storage.' });
+                         return;
+                    }
                 }
 
                 // 3. Save console data to Firestore
-                const { photos, ...consoleData } = values;
                 await addDoc(collection(db, 'consoles'), {
-                    ...consoleData,
+                    ...values, // Use the validated form values
                     userId: userId,
                     photos: photoURLs,
                     aiSummary: "AI summary temporarily disabled.", // Placeholder
@@ -190,31 +194,18 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                                 <SelectItem value="Yes">Yes</SelectItem>
                             </SelectContent></Select><FormMessage /></FormItem>
                         )} />
-                        <FormField
-                            control={form.control}
-                            name="photos"
-                            render={({ field }) => {
-                                return (
-                                <FormItem>
-                                    <FormLabel>Upload Photos (Up to 3, Optional)</FormLabel>
-                                    <FormControl>
-                                    <Input
-                                        type="file"
-                                        multiple
-                                        accept="image/*"
-                                        onBlur={field.onBlur}
-                                        name={field.name}
-                                        onChange={(e) => {
-                                            field.onChange(e.target.files);
-                                        }}
-                                        ref={field.ref}
-                                    />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                                );
-                            }}
-                        />
+                        <FormItem>
+                            <FormLabel>Upload Photos (Up to 3, Optional)</FormLabel>
+                            <FormControl>
+                            <Input
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                {...photoRef}
+                            />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
 
                         <Button type="submit" disabled={isPending}>
                             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Submit for Repair
