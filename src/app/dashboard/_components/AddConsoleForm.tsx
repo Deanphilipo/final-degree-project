@@ -23,6 +23,7 @@ import { v4 as uuidv4 } from 'uuid';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
+// Simplified schema without file validation
 const formSchema = z.object({
     consoleType: z.string().min(1, 'Console type is required.'),
     serialNumber: z.string().min(1, 'Serial number is required.'),
@@ -31,12 +32,7 @@ const formSchema = z.object({
     issueType: z.enum(["Doesn't power on", "HDMI port broken", "Overheating", "Disk not reading"]),
     additionalNotes: z.string().optional(),
     pastRepairs: z.enum(['Yes', 'No']),
-    photos: z.custom<FileList>()
-        .refine((files) => !files || files.length <= 3, 'You can upload up to 3 photos.')
-        .refine((files) => !files || Array.from(files).every(file => file.size <= MAX_FILE_SIZE), `Max file size is 5MB.`)
-        .refine((files) => !files || Array.from(files).every(file => ACCEPTED_IMAGE_TYPES.includes(file.type)),
-            ".jpg, .jpeg, .png and .webp files are accepted."
-        ).optional()
+    photos: z.any(), // We will handle validation in onSubmit
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -82,6 +78,26 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
 
         startTransition(async () => {
             try {
+                // --- Manual Photo Validation ---
+                const photoFiles = values.photos instanceof FileList ? Array.from(values.photos) : [];
+                
+                if (photoFiles.length > 3) {
+                    form.setError('photos', { type: 'manual', message: 'You can upload up to 3 photos.' });
+                    return;
+                }
+                for (const file of photoFiles) {
+                    if (file.size > MAX_FILE_SIZE) {
+                        form.setError('photos', { type: 'manual', message: `Max file size is 5MB.` });
+                        return;
+                    }
+                    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+                        form.setError('photos', { type: 'manual', message: '.jpg, .jpeg, .png and .webp files are accepted.' });
+                        return;
+                    }
+                }
+                // --- End of Validation ---
+
+
                 // 0. Check for duplicate serial number
                 const consolesRef = collection(db, 'consoles');
                 const q = query(consolesRef, where('serialNumber', '==', values.serialNumber));
@@ -97,7 +113,6 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                 }
 
                 // 1. Handle photo uploads and AI summary
-                const photoFiles = values.photos ? Array.from(values.photos) : [];
                 let photoDataUris: string[] = [];
                 if (photoFiles.length > 0) {
                    photoDataUris = await Promise.all(photoFiles.map(file => readFileAsDataURL(file)));
@@ -191,7 +206,13 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                             </SelectContent></Select><FormMessage /></FormItem>
                         )} />
                         <FormField control={form.control} name="photos" render={({ field }) => (
-                            <FormItem><FormLabel>Upload Photos (Up to 3)</FormLabel><FormControl><Input type="file" multiple accept="image/*" {...photoRef} /></FormControl><FormMessage /></FormItem>
+                            <FormItem>
+                                <FormLabel>Upload Photos (Up to 3, Optional)</FormLabel>
+                                <FormControl>
+                                    <Input type="file" multiple accept="image/*" {...photoRef} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
                         )} />
 
                         <Button type="submit" disabled={isPending}>
