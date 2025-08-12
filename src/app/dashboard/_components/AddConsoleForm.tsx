@@ -8,8 +8,7 @@ import { useTransition } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { addDoc, collection, getDocs, query, serverTimestamp, where } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -19,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { summarizeIssue } from '@/ai/flows/summarize-issue';
+import { uploadFile } from '@/ai/flows/upload-file';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -89,8 +89,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
 
         startTransition(async () => {
             try {
-                // --- Manual Photo Validation ---
-                const photoFileList = values.photos;
+                const photoFileList = form.getValues('photos') as FileList | null;
                 const photoFiles = photoFileList ? Array.from(photoFileList) : [];
                 
                 if (photoFiles.length > 3) {
@@ -107,9 +106,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                         return;
                     }
                 }
-                // --- End of Photo Validation ---
 
-                // 1. Check for duplicate serial number
                 const consolesRef = collection(db, 'consoles');
                 const q = query(consolesRef, where('serialNumber', '==', values.serialNumber));
                 const querySnapshot = await getDocs(q);
@@ -123,22 +120,39 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                     return;
                 }
                 
-                // 2. Upload photos to Firebase Storage
+                const photoDataUris = await Promise.all(photoFiles.map(fileToDataUri));
+
+                let aiSummary = 'No photos or notes provided for summary.';
+                if (photoDataUris.length > 0 || values.additionalNotes) {
+                  try {
+                    const summaryResult = await summarizeIssue({
+                      photoDataUris,
+                      userNotes: `${values.issueType}. ${values.additionalNotes || ''}`,
+                    });
+                    aiSummary = summaryResult.summary;
+                  } catch (e) {
+                    console.error("AI summarization failed:", e);
+                    aiSummary = "AI summarization failed.";
+                  }
+                }
+
                 const photoURLs = await Promise.all(
-                    photoFiles.map(async (file) => {
+                    photoFiles.map(async (file, index) => {
                         const photoId = uuidv4();
-                        const storageRef = ref(storage, `consoles/${userId}/${photoId}-${file.name}`);
-                        await uploadBytes(storageRef, file);
-                        return getDownloadURL(storageRef);
+                        const filePath = `consoles/${userId}/${photoId}-${file.name}`;
+                        const { downloadUrl } = await uploadFile({
+                            fileDataUri: photoDataUris[index],
+                            filePath: filePath,
+                        });
+                        return downloadUrl;
                     })
                 );
 
-                // 3. Save console data to Firestore
                 await addDoc(collection(db, 'consoles'), {
                     ...values,
                     userId: userId,
                     photos: photoURLs,
-                    aiSummary: 'AI summarization disabled.', // AI feature disabled
+                    aiSummary: aiSummary,
                     status: 'Pending',
                     submittedAt: serverTimestamp(),
                 });

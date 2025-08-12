@@ -8,8 +8,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { addDoc, collection, getDocs, serverTimestamp, query, where } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -21,6 +20,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { UserProfile } from '@/types';
 import { useRouter } from 'next/navigation';
 import { summarizeIssue } from '@/ai/flows/summarize-issue';
+import { uploadFile } from '@/ai/flows/upload-file';
+
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -101,7 +102,6 @@ export function AdminAddConsoleForm() {
 
         startTransition(async () => {
             try {
-                 // 0. Check for duplicate serial number
                 const consolesRef = collection(db, 'consoles');
                 const q = query(consolesRef, where('serialNumber', '==', values.serialNumber));
                 const querySnapshot = await getDocs(q);
@@ -118,7 +118,6 @@ export function AdminAddConsoleForm() {
                 const photoFileList = form.getValues('photos') as FileList | null;
                 const photoFiles = photoFileList ? Array.from(photoFileList) : [];
 
-                // Manual validation
                 if (photoFiles.length > 3) {
                     toast({ variant: 'destructive', title: 'Validation Error', description: 'You can upload up to 3 photos.' });
                     return;
@@ -134,22 +133,39 @@ export function AdminAddConsoleForm() {
                     }
                 }
                 
-                // 2. Upload photos to Firebase Storage
+                const photoDataUris = await Promise.all(photoFiles.map(fileToDataUri));
+
+                let aiSummary = 'No photos or notes provided for summary.';
+                if (photoDataUris.length > 0 || values.additionalNotes) {
+                  try {
+                    const summaryResult = await summarizeIssue({
+                      photoDataUris,
+                      userNotes: `${values.issueType}. ${values.additionalNotes || ''}`,
+                    });
+                    aiSummary = summaryResult.summary;
+                  } catch (e) {
+                    console.error("AI summarization failed:", e);
+                    aiSummary = "AI summarization failed.";
+                  }
+                }
+
                 const photoURLs = await Promise.all(
-                    photoFiles.map(async (file) => {
+                    photoFiles.map(async (file, index) => {
                         const photoId = uuidv4();
-                        const storageRef = ref(storage, `consoles/${values.userId}/${photoId}-${file.name}`);
-                        await uploadBytes(storageRef, file);
-                        return getDownloadURL(storageRef);
+                        const filePath = `consoles/${values.userId}/${photoId}-${file.name}`;
+                        const { downloadUrl } = await uploadFile({
+                            fileDataUri: photoDataUris[index],
+                            filePath: filePath,
+                        });
+                        return downloadUrl;
                     })
                 );
 
-                // 3. Save console data to Firestore
                 const { photos, ...consoleData } = values;
                 await addDoc(collection(db, 'consoles'), {
                     ...consoleData,
                     photos: photoURLs,
-                    aiSummary: 'AI summarization disabled.', // AI feature disabled
+                    aiSummary: aiSummary,
                     status: 'Pending',
                     submittedAt: serverTimestamp(),
                 });
