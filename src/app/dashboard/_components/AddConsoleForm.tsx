@@ -28,13 +28,22 @@ const formSchema = z.object({
     serialNumber: z.string().min(1, 'Serial number is required.'),
     color: z.string().min(1, 'Color is required.'),
     storageCapacity: z.coerce.number().positive('Storage capacity must be a positive number.'),
-    issueType: z.enum(["Doesn't power on", "HDMI port broken", "Overheating", "Disk not reading"], {
+    issueType: z.enum(["Doesn't power on", "HDMI port broken", "Overheating", "Disk not reading", "Other"], {
         required_error: "You need to select an issue type.",
     }),
     additionalNotes: z.string().optional(),
     pastRepairs: z.enum(['Yes', 'No'], {
         required_error: "You need to select a past repair status.",
     }),
+    photos: z.custom<FileList | undefined>()
+}).refine(data => {
+    if (data.issueType === 'Other') {
+        return data.additionalNotes && data.additionalNotes.trim().length > 0;
+    }
+    return true;
+}, {
+    message: "Additional notes are required when 'Other' is selected.",
+    path: ['additionalNotes'],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -55,7 +64,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
 
-    const form = useForm<FormValues & { photos?: FileList }>({
+    const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             consoleType: '',
@@ -68,9 +77,9 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
             photos: undefined,
         }
     });
-
-    const photoRef = form.register("photos");
     
+    const photoRef = form.register("photos");
+
     const onSubmit = (values: FormValues) => {
         if (!user) {
             toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to submit a console.' });
@@ -81,7 +90,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
         startTransition(async () => {
             try {
                 // --- Manual Photo Validation ---
-                const photoFileList = form.getValues('photos');
+                const photoFileList = values.photos;
                 const photoFiles = photoFileList ? Array.from(photoFileList) : [];
                 
                 if (photoFiles.length > 3) {
@@ -169,15 +178,16 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                             )} />
                         </div>
                         <FormField control={form.control} name="issueType" render={({ field }) => (
-                            <FormItem><FormLabel>Issue Type</FormLabel><Select onValuechange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select the main issue" /></SelectTrigger></FormControl><SelectContent>
+                            <FormItem><FormLabel>Issue Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select the main issue" /></SelectTrigger></FormControl><SelectContent>
                                 <SelectItem value="Doesn't power on">Doesn't power on</SelectItem>
                                 <SelectItem value="HDMI port broken">HDMI port broken</SelectItem>
                                 <SelectItem value="Overheating">Overheating</SelectItem>
                                 <SelectItem value="Disk not reading">Disk not reading</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
                             </SelectContent></Select><FormMessage /></FormItem>
                         )} />
                         <FormField control={form.control} name="additionalNotes" render={({ field }) => (
-                            <FormItem><FormLabel>Additional Notes (Optional)</FormLabel><FormControl><Textarea placeholder="Describe the issue in more detail..." {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>Additional Notes</FormLabel><FormControl><Textarea placeholder="Describe the issue in more detail..." {...field} /></FormControl><FormMessage /></FormItem>
                         )} />
                         <FormField control={form.control} name="pastRepairs" render={({ field }) => (
                              <FormItem><FormLabel>Past Repairs</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Has this console been repaired before?" /></SelectTrigger></FormControl><SelectContent>
