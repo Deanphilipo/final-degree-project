@@ -32,9 +32,9 @@ const formSchema = z.object({
     additionalNotes: z.string().optional(),
     pastRepairs: z.enum(['Yes', 'No']),
     photos: z.custom<FileList>()
-        .refine((files) => files.length <= 3, 'You can upload up to 3 photos.')
-        .refine((files) => Array.from(files).every(file => file.size <= MAX_FILE_SIZE), `Max file size is 5MB.`)
-        .refine((files) => Array.from(files).every(file => ACCEPTED_IMAGE_TYPES.includes(file.type)),
+        .refine((files) => files && files.length <= 3, 'You can upload up to 3 photos.')
+        .refine((files) => !files || Array.from(files).every(file => file.size <= MAX_FILE_SIZE), `Max file size is 5MB.`)
+        .refine((files) => !files || Array.from(files).every(file => ACCEPTED_IMAGE_TYPES.includes(file.type)),
             ".jpg, .jpeg, .png and .webp files are accepted."
         )
 });
@@ -97,7 +97,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                 }
 
                 // 1. Handle photo uploads and AI summary
-                const photoFiles = Array.from(values.photos);
+                const photoFiles = values.photos ? Array.from(values.photos) : [];
                 let photoDataUris: string[] = [];
                 if (photoFiles.length > 0) {
                    photoDataUris = await Promise.all(photoFiles.map(file => readFileAsDataURL(file)));
@@ -128,9 +128,10 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                 );
 
                 // 3. Save console data to Firestore
+                const { photos, ...consoleData } = values;
                 await addDoc(collection(db, 'consoles'), {
+                    ...consoleData,
                     userId: userId,
-                    ...values,
                     photos: photoURLs,
                     aiSummary,
                     status: 'Pending',
