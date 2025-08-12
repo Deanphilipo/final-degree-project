@@ -12,9 +12,7 @@ import {getApp, getApps, initializeApp} from 'firebase-admin/app';
 
 // Initialize Firebase Admin SDK if not already initialized
 const app = !getApps().length
-  ? initializeApp({
-      storageBucket: 'fixmyconsole.appspot.com',
-    })
+  ? initializeApp()
   : getApp();
 
 const bucket = getStorage(app).bucket();
