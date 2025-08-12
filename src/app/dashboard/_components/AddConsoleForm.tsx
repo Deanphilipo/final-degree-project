@@ -133,7 +133,15 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
 
             } catch (error: any) {
                 console.error("A critical error occurred during submission:", error);
-                toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred. Please check Storage permissions and rules.' });
+                 if (error.code === 'storage/unauthorized') {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Storage Permission Error',
+                        description: 'You do not have permission to upload files. Please check your Firebase Storage security rules.'
+                    });
+                } else {
+                    toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred. Please check Storage permissions and rules.' });
+                }
             }
         });
     };

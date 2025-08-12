@@ -149,7 +149,15 @@ export function AdminAddConsoleForm() {
 
             } catch (error: any) {
                 console.error("Submission Error: ", error);
-                toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred.' });
+                 if (error.code === 'storage/unauthorized') {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Storage Permission Error',
+                        description: 'You do not have permission to upload files. Please check your Firebase Storage security rules.'
+                    });
+                } else {
+                    toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred.' });
+                }
             }
         });
     };
