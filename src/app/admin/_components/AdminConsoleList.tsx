@@ -175,15 +175,29 @@ export function AdminConsoleList() {
                         </TableCell>
                         <TableCell className="text-right">
                             <div className="flex gap-2 justify-end">
-                                <Button variant="ghost" size="icon" disabled>
-                                    <Edit className="h-4 w-4" />
-                                </Button>
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="icon" disabled={isPending}>
-                                            <Trash className="h-4 w-4" />
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon">
+                                            <Edit className="h-4 w-4" />
                                         </Button>
-                                    </AlertDialogTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Edit Record</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                <AlertDialog>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" disabled={isPending}>
+                                                    <Trash className="h-4 w-4" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                            <p>Delete Record</p>
+                                        </TooltipContent>
+                                    </Tooltip>
                                     <AlertDialogContent>
                                         <AlertDialogHeader>
                                         <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
