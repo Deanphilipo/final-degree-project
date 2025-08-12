@@ -9,7 +9,8 @@ const firebaseConfig = {
   projectId: "fixmyconsole",
   storageBucket: "fixmyconsole.appspot.com",
   messagingSenderId: "287487142964",
-  appId: "1:287487142964:web:f8e5059b6e753793866e61"
+  appId: "1:287487142964:web:f8e5059b6e753793866e61",
+  measurementId: "G-XXXXXXXXXX"
 };
 
 

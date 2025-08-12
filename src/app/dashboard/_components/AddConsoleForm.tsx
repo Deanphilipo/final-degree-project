@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { summarizeIssue } from '@/ai/flows/summarize-issue';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -41,6 +42,13 @@ type FormValues = z.infer<typeof formSchema>;
 interface AddConsoleFormProps {
     onFormSubmit: () => void;
 }
+
+const fileToDataUri = (file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+});
 
 export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
     const { user } = useAuth();
@@ -161,7 +169,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                             )} />
                         </div>
                         <FormField control={form.control} name="issueType" render={({ field }) => (
-                            <FormItem><FormLabel>Issue Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select the main issue" /></SelectTrigger></FormControl><SelectContent>
+                            <FormItem><FormLabel>Issue Type</FormLabel><Select onValuechange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select the main issue" /></SelectTrigger></FormControl><SelectContent>
                                 <SelectItem value="Doesn't power on">Doesn't power on</SelectItem>
                                 <SelectItem value="HDMI port broken">HDMI port broken</SelectItem>
                                 <SelectItem value="Overheating">Overheating</SelectItem>

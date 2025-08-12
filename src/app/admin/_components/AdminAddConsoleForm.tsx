@@ -20,6 +20,7 @@ import { Loader2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { UserProfile } from '@/types';
 import { useRouter } from 'next/navigation';
+import { summarizeIssue } from '@/ai/flows/summarize-issue';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -33,15 +34,18 @@ const formSchema = z.object({
     issueType: z.enum(["Doesn't power on", "HDMI port broken", "Overheating", "Disk not reading"]),
     additionalNotes: z.string().optional(),
     pastRepairs: z.enum(['Yes', 'No']),
-    photos: z.custom<FileList>()
-        .refine((files) => files.length <= 3, 'You can upload up to 3 photos.')
-        .refine((files) => Array.from(files).every(file => file.size <= MAX_FILE_SIZE), `Max file size is 5MB.`)
-        .refine((files) => Array.from(files).every(file => ACCEPTED_IMAGE_TYPES.includes(file.type)),
-            ".jpg, .jpeg, .png and .webp files are accepted."
-        )
+    photos: z.any()
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+const fileToDataUri = (file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+});
+
 
 export function AdminAddConsoleForm() {
     const { isAdmin } = useAuth();
@@ -103,8 +107,24 @@ export function AdminAddConsoleForm() {
                     return;
                 }
 
-                // 1. Handle photo uploads
-                const photoFiles = values.photos ? Array.from(values.photos) : [];
+                const photoFileList = form.getValues('photos') as FileList | null;
+                const photoFiles = photoFileList ? Array.from(photoFileList) : [];
+
+                // Manual validation
+                if (photoFiles.length > 3) {
+                    toast({ variant: 'destructive', title: 'Validation Error', description: 'You can upload up to 3 photos.' });
+                    return;
+                }
+                for (const file of photoFiles) {
+                    if (file.size > MAX_FILE_SIZE) {
+                        toast({ variant: 'destructive', title: 'Validation Error', description: `Max file size is 5MB.` });
+                        return;
+                    }
+                    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+                        toast({ variant: 'destructive', title: 'Validation Error', description: '.jpg, .jpeg, .png and .webp files are accepted.' });
+                        return;
+                    }
+                }
                 
                 // 2. Upload photos to Firebase Storage
                 const photoURLs = await Promise.all(
@@ -131,7 +151,7 @@ export function AdminAddConsoleForm() {
                 router.push('/admin');
 
             } catch (error: any) {
-                console.error(error);
+                console.error("Submission Error: ", error);
                 toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred.' });
             }
         });
