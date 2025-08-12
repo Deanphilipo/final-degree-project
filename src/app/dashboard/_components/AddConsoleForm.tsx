@@ -32,11 +32,11 @@ const formSchema = z.object({
     additionalNotes: z.string().optional(),
     pastRepairs: z.enum(['Yes', 'No']),
     photos: z.custom<FileList>()
-        .refine((files) => files && files.length <= 3, 'You can upload up to 3 photos.')
+        .refine((files) => !files || files.length <= 3, 'You can upload up to 3 photos.')
         .refine((files) => !files || Array.from(files).every(file => file.size <= MAX_FILE_SIZE), `Max file size is 5MB.`)
         .refine((files) => !files || Array.from(files).every(file => ACCEPTED_IMAGE_TYPES.includes(file.type)),
             ".jpg, .jpeg, .png and .webp files are accepted."
-        )
+        ).optional()
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -56,7 +56,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
             consoleType: '',
             serialNumber: '',
             color: '',
-            storageCapacity: 0,
+            storageCapacity: undefined,
             issueType: undefined,
             additionalNotes: '',
             pastRepairs: undefined,
