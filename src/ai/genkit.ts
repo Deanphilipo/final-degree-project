@@ -6,9 +6,7 @@ import 'dotenv/config';
 export const ai = genkit({
   plugins: [
     firebase(),
-    googleAI({
-      projectId: process.env.GCLOUD_PROJECT,
-    }),
+    googleAI(),
   ],
   logLevel: 'debug',
   enableTracingAndMetrics: true,

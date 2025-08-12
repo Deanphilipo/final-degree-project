@@ -8,7 +8,8 @@ import { useTransition } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { addDoc, collection, getDocs, query, serverTimestamp, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -18,7 +19,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { summarizeIssue } from '@/ai/flows/summarize-issue';
-import { uploadFile } from '@/ai/flows/upload-file';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -28,14 +28,10 @@ const formSchema = z.object({
     serialNumber: z.string().min(1, 'Serial number is required.'),
     color: z.string().min(1, 'Color is required.'),
     storageCapacity: z.coerce.number().positive('Storage capacity must be a positive number.'),
-    issueType: z.enum(["Doesn't power on", "HDMI port broken", "Overheating", "Disk not reading", "Other"], {
-        required_error: "You need to select an issue type.",
-    }),
+    issueType: z.enum(["Doesn't power on", "HDMI port broken", "Overheating", "Disk not reading", "Other"]),
     additionalNotes: z.string().optional(),
-    pastRepairs: z.enum(['Yes', 'No'], {
-        required_error: "You need to select a past repair status.",
-    }),
-    photos: z.custom<FileList | undefined>()
+    pastRepairs: z.enum(['Yes', 'No']),
+    photos: z.any()
 }).refine(data => {
     if (data.issueType === 'Other') {
         return data.additionalNotes && data.additionalNotes.trim().length > 0;
@@ -137,19 +133,18 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                 }
 
                 const photoURLs = await Promise.all(
-                    photoFiles.map(async (file, index) => {
+                    photoFiles.map(async (file) => {
                         const photoId = uuidv4();
-                        const filePath = `consoles/${userId}/${photoId}-${file.name}`;
-                        const { downloadUrl } = await uploadFile({
-                            fileDataUri: photoDataUris[index],
-                            filePath: filePath,
-                        });
-                        return downloadUrl;
+                        const storageRef = ref(storage, `consoles/${userId}/${photoId}-${file.name}`);
+                        await uploadBytes(storageRef, file);
+                        const downloadURL = await getDownloadURL(storageRef);
+                        return downloadURL;
                     })
                 );
 
+                const { photos, ...consoleData } = values;
                 await addDoc(collection(db, 'consoles'), {
-                    ...values,
+                    ...consoleData,
                     userId: userId,
                     photos: photoURLs,
                     aiSummary: aiSummary,

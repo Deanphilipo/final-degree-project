@@ -8,7 +8,8 @@ import { useEffect, useState, useTransition } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { addDoc, collection, getDocs, serverTimestamp, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -20,7 +21,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { UserProfile } from '@/types';
 import { useRouter } from 'next/navigation';
 import { summarizeIssue } from '@/ai/flows/summarize-issue';
-import { uploadFile } from '@/ai/flows/upload-file';
 
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -150,14 +150,12 @@ export function AdminAddConsoleForm() {
                 }
 
                 const photoURLs = await Promise.all(
-                    photoFiles.map(async (file, index) => {
+                    photoFiles.map(async (file) => {
                         const photoId = uuidv4();
-                        const filePath = `consoles/${values.userId}/${photoId}-${file.name}`;
-                        const { downloadUrl } = await uploadFile({
-                            fileDataUri: photoDataUris[index],
-                            filePath: filePath,
-                        });
-                        return downloadUrl;
+                        const storageRef = ref(storage, `consoles/${values.userId}/${photoId}-${file.name}`);
+                        await uploadBytes(storageRef, file);
+                        const downloadURL = await getDownloadURL(storageRef);
+                        return downloadURL;
                     })
                 );
 
