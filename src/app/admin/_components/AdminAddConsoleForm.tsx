@@ -8,8 +8,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { addDoc, collection, getDocs, serverTimestamp, query, where } from 'firebase/firestore';
-import { db, storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db } from '@/lib/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -17,13 +16,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
 import { UserProfile } from '@/types';
 import { useRouter } from 'next/navigation';
-
-
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
 const formSchema = z.object({
     userId: z.string().min(1, 'A user must be selected.'),
@@ -34,12 +28,6 @@ const formSchema = z.object({
     issueType: z.enum(["Doesn't power on", "HDMI port broken", "Overheating", "Disk not reading", "Other"]),
     additionalNotes: z.string().optional(),
     pastRepairs: z.enum(['Yes', 'No']),
-    photos: z.any().refine(files => files?.length > 0, 'At least one photo is required.')
-    .refine(files => files?.[0]?.size <= MAX_FILE_SIZE, `Max file size is 5MB.`)
-    .refine(
-      files => ACCEPTED_IMAGE_TYPES.includes(files?.[0]?.type),
-      ".jpg, .jpeg, .png and .webp files are accepted."
-    )
 }).refine(data => {
     if (data.issueType === 'Other') {
         return data.additionalNotes && data.additionalNotes.trim().length > 0;
@@ -51,17 +39,6 @@ const formSchema = z.object({
 });
 
 type FormValues = z.infer<typeof formSchema>;
-
-const UPLOAD_TIMEOUT = 15000; // 15 seconds
-
-function uploadWithTimeout(storageRef: any, file: File) {
-    const uploadPromise = uploadBytes(storageRef, file);
-    const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Upload timed out.')), UPLOAD_TIMEOUT);
-    });
-    return Promise.race([uploadPromise, timeoutPromise]);
-}
-
 
 export function AdminAddConsoleForm() {
     const { isAdmin } = useAuth();
@@ -97,7 +74,6 @@ export function AdminAddConsoleForm() {
             issueType: undefined,
             additionalNotes: '',
             pastRepairs: undefined,
-            photos: undefined,
         }
     });
 
@@ -123,46 +99,8 @@ export function AdminAddConsoleForm() {
                 return;
             }
 
-            const photoFileList = form.getValues('photos') as FileList | null;
-            const photoFiles = photoFileList ? Array.from(photoFileList) : [];
-
-            if (photoFiles.length === 0) {
-                form.setError('photos', { type: 'manual', message: 'At least one photo is required.' });
-                setIsSubmitting(false);
-                return;
-            }
-             if (photoFiles.length > 3) {
-                form.setError('photos', { type: 'manual', message: 'You can upload up to 3 photos.' });
-                setIsSubmitting(false);
-                return;
-            }
-            for (const file of photoFiles) {
-                if (file.size > MAX_FILE_SIZE) {
-                     form.setError('photos', { type: 'manual', message: `Max file size is 5MB.` });
-                     setIsSubmitting(false);
-                    return;
-                }
-                if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-                    form.setError('photos', { type: 'manual', message: '.jpg, .jpeg, .png and .webp files are accepted.' });
-                    setIsSubmitting(false);
-                    return;
-                }
-            }
-
-            const photoURLs = await Promise.all(
-                photoFiles.map(async (file) => {
-                    const photoId = uuidv4();
-                    const storageRef = ref(storage, `consoles/${values.userId}/${photoId}-${file.name}`);
-                    await uploadWithTimeout(storageRef, file);
-                    const downloadURL = await getDownloadURL(storageRef);
-                    return downloadURL;
-                })
-            );
-
-            const { photos, ...consoleData } = values;
             await addDoc(collection(db, 'consoles'), {
-                ...consoleData,
-                photos: photoURLs,
+                ...values,
                 status: 'Pending',
                 submittedAt: serverTimestamp(),
             });
@@ -172,21 +110,11 @@ export function AdminAddConsoleForm() {
             router.push('/admin');
 
         } catch (error: any) {
-             if (error.code === 'storage/unauthorized' || error.message.includes('Upload timed out')) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Storage Permission Error',
-                    description: 'Upload failed. This is likely due to Firebase Storage security rules or a network issue. Please check your rules and try again.'
-                });
-            } else {
-                toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred.' });
-            }
+            toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred.' });
         } finally {
             setIsSubmitting(false);
         }
     };
-
-    const photoRef = form.register("photos");
 
     return (
         <Card>
@@ -237,10 +165,7 @@ export function AdminAddConsoleForm() {
                                 <SelectItem value="Yes">Yes</SelectItem>
                             </SelectContent></Select><FormMessage /></FormItem>
                         )} />
-                        <FormField control={form.control} name="photos" render={({ field }) => (
-                            <FormItem><FormLabel>Upload Photos (Up to 3, Required)</FormLabel><FormControl><Input type="file" multiple accept="image/*" {...photoRef} /></FormControl><FormMessage /></FormItem>
-                        )} />
-
+                        
                         <Button type="submit" disabled={isSubmitting}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Submit for Repair
                         </Button>

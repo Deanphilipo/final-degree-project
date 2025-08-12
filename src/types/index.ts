@@ -17,7 +17,6 @@ export interface Console {
   issueType: string;
   additionalNotes?: string;
   pastRepairs: 'Yes' | 'No';
-  photos: string[];
   status: 'Pending' | 'In Progress' | 'Awaiting Parts' | 'Fixed' | 'Cannot be Fixed' | 'Returned';
   submittedAt: Timestamp;
 }
