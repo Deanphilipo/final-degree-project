@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
-import { collection, query, onSnapshot, orderBy, doc, updateDoc, deleteDoc, getDocs, getDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, orderBy, doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { AdminConsole, Console, UserProfile } from '@/types';
 import {
@@ -37,6 +37,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import Link from 'next/link';
 
 type Status = Console['status'];
 
@@ -177,8 +178,10 @@ export function AdminConsoleList() {
                             <div className="flex gap-2 justify-end">
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon">
+                                        <Button variant="ghost" size="icon" asChild>
+                                          <Link href={`/admin/edit-console/${c.id}`}>
                                             <Edit className="h-4 w-4" />
+                                          </Link>
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
