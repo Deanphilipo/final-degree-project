@@ -52,6 +52,16 @@ interface AddConsoleFormProps {
     onFormSubmit: () => void;
 }
 
+const UPLOAD_TIMEOUT = 15000; // 15 seconds
+
+function uploadWithTimeout(storageRef: any, file: File) {
+    const uploadPromise = uploadBytes(storageRef, file);
+    const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Upload timed out.')), UPLOAD_TIMEOUT);
+    });
+    return Promise.race([uploadPromise, timeoutPromise]);
+}
+
 export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
     const { user } = useAuth();
     const { toast } = useToast();
@@ -126,7 +136,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                 photoFiles.map(async (file) => {
                     const photoId = uuidv4();
                     const storageRef = ref(storage, `consoles/${userId}/${photoId}-${file.name}`);
-                    await uploadBytes(storageRef, file);
+                    await uploadWithTimeout(storageRef, file);
                     const downloadURL = await getDownloadURL(storageRef);
                     return downloadURL;
                 })
@@ -146,11 +156,11 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
             onFormSubmit();
 
         } catch (error: any) {
-             if (error.code === 'storage/unauthorized') {
+             if (error.code === 'storage/unauthorized' || error.message.includes('Upload timed out')) {
                 toast({
                     variant: 'destructive',
                     title: 'Storage Permission Error',
-                    description: 'You do not have permission to upload files. Please check your Firebase Storage security rules.'
+                    description: 'Upload failed. This is likely due to Firebase Storage security rules or a network issue. Please check your rules and try again.'
                 });
             } else {
                 toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred. Please check Storage permissions and rules.' });
