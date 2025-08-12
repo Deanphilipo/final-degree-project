@@ -18,11 +18,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { summarizeIssue } from '@/ai/flows/summarize-issue';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
-// Photo validation is removed from Zod and will be handled manually in onSubmit
 const formSchema = z.object({
     consoleType: z.string().min(1, 'Console type is required.'),
     serialNumber: z.string().min(1, 'Serial number is required.'),
@@ -35,7 +35,6 @@ const formSchema = z.object({
     pastRepairs: z.enum(['Yes', 'No'], {
         required_error: "You need to select a past repair status.",
     }),
-    // Photos removed from schema, will be handled manually
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -64,6 +63,15 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
     });
     
     const photoRef = form.register("photos");
+
+    const readFileAsDataURL = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    }
 
     const onSubmit = (values: FormValues) => {
         if (!user) {
@@ -95,50 +103,55 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                 // --- End of Photo Validation ---
 
                 // 1. Check for duplicate serial number
-                try {
-                    const consolesRef = collection(db, 'consoles');
-                    const q = query(consolesRef, where('serialNumber', '==', values.serialNumber));
-                    const querySnapshot = await getDocs(q);
+                const consolesRef = collection(db, 'consoles');
+                const q = query(consolesRef, where('serialNumber', '==', values.serialNumber));
+                const querySnapshot = await getDocs(q);
 
-                    if (!querySnapshot.empty) {
-                        toast({
-                            variant: 'destructive',
-                            title: 'Duplicate Serial Number',
-                            description: 'A console with this serial number has already been submitted.',
-                        });
-                        return;
-                    }
-                } catch (error) {
-                    console.error("Duplicate check failed:", error);
-                    toast({ variant: 'destructive', title: 'Error', description: 'Could not verify serial number. Please check Firestore permissions.' });
+                if (!querySnapshot.empty) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Duplicate Serial Number',
+                        description: 'A console with this serial number has already been submitted.',
+                    });
                     return;
                 }
                 
-                // 2. Upload photos to Firebase Storage
-                let photoURLs: string[] = [];
+                // 2. Handle AI summary
+                let photoDataUris: string[] = [];
                 if (photoFiles.length > 0) {
-                    try {
-                        photoURLs = await Promise.all(
-                            photoFiles.map(async (file) => {
-                                const photoId = uuidv4();
-                                const storageRef = ref(storage, `consoles/${userId}/${photoId}-${file.name}`);
-                                await uploadBytes(storageRef, file);
-                                return getDownloadURL(storageRef);
-                            })
-                        );
-                    } catch(uploadError) {
-                         console.error("Photo upload failed:", uploadError);
-                         toast({ variant: 'destructive', title: 'Upload Error', description: 'Could not upload photos to storage.' });
-                         return;
-                    }
+                   photoDataUris = await Promise.all(photoFiles.map(file => readFileAsDataURL(file)));
                 }
 
-                // 3. Save console data to Firestore
+                let aiSummary = 'No summary generated.';
+                if (photoDataUris.length > 0 || values.additionalNotes) {
+                     try {
+                        const summaryResult = await summarizeIssue({
+                            photoDataUris,
+                            userNotes: `${values.issueType}. ${values.additionalNotes}`
+                        });
+                        aiSummary = summaryResult.summary;
+                    } catch (aiError) {
+                        console.error("AI summarization failed:", aiError);
+                        aiSummary = "AI summary failed. Proceeding with user notes.";
+                    }
+                }
+                
+                // 3. Upload photos to Firebase Storage
+                const photoURLs = await Promise.all(
+                    photoFiles.map(async (file) => {
+                        const photoId = uuidv4();
+                        const storageRef = ref(storage, `consoles/${userId}/${photoId}-${file.name}`);
+                        await uploadBytes(storageRef, file);
+                        return getDownloadURL(storageRef);
+                    })
+                );
+
+                // 4. Save console data to Firestore
                 await addDoc(collection(db, 'consoles'), {
-                    ...values, // Use the validated form values
+                    ...values,
                     userId: userId,
                     photos: photoURLs,
-                    aiSummary: "AI summary temporarily disabled.", // Placeholder
+                    aiSummary,
                     status: 'Pending',
                     submittedAt: serverTimestamp(),
                 });
@@ -149,7 +162,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
 
             } catch (error: any) {
                 console.error("A critical error occurred during submission:", error);
-                toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred. Please try again.' });
+                toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred. Please check Storage permissions.' });
             }
         });
     };
@@ -194,18 +207,19 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                                 <SelectItem value="Yes">Yes</SelectItem>
                             </SelectContent></Select><FormMessage /></FormItem>
                         )} />
-                        <FormItem>
-                            <FormLabel>Upload Photos (Up to 3, Optional)</FormLabel>
-                            <FormControl>
-                            <Input
-                                type="file"
-                                multiple
-                                accept="image/*"
-                                {...photoRef}
-                            />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
+                        <FormField
+                            control={form.control}
+                            name="photos"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Upload Photos (Up to 3, Optional)</FormLabel>
+                                <FormControl>
+                                    <Input type="file" multiple accept="image/*" {...photoRef} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
                         <Button type="submit" disabled={isPending}>
                             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Submit for Repair
@@ -216,3 +230,5 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
         </Card>
     );
 }
+
+    
