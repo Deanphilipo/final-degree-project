@@ -10,7 +10,6 @@ import { useToast } from '@/hooks/use-toast';
 import { addDoc, collection, getDocs, query, serverTimestamp, where } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
-import { summarizeIssue } from '@/ai/flows/summarize-issue';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -23,6 +22,7 @@ import { v4 as uuidv4 } from 'uuid';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
+// Photo validation is removed from Zod and will be handled manually in onSubmit
 const formSchema = z.object({
     consoleType: z.string().min(1, 'Console type is required.'),
     serialNumber: z.string().min(1, 'Serial number is required.'),
@@ -35,7 +35,7 @@ const formSchema = z.object({
     pastRepairs: z.enum(['Yes', 'No'], {
         required_error: "You need to select a past repair status.",
     }),
-    photos: z.any().optional(),
+    photos: z.any().optional(), // Use z.any() and validate in onSubmit
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -89,8 +89,9 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                         return;
                     }
                 }
+                // --- End of Photo Validation ---
 
-                // 0. Check for duplicate serial number
+                // 1. Check for duplicate serial number
                 try {
                     const consolesRef = collection(db, 'consoles');
                     const q = query(consolesRef, where('serialNumber', '==', values.serialNumber));
@@ -109,9 +110,6 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                     toast({ variant: 'destructive', title: 'Error', description: 'Could not verify serial number. Please check Firestore permissions.' });
                     return;
                 }
-                
-                // [DEBUG] Temporarily disabling AI Summary
-                const aiSummary = 'AI Summary disabled for debugging.';
                 
                 // 2. Upload photos to Firebase Storage
                 let photoURLs: string[] = [];
@@ -136,7 +134,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                     ...consoleData,
                     userId: userId,
                     photos: photoURLs,
-                    aiSummary,
+                    aiSummary: "AI summary temporarily disabled.", // Placeholder
                     status: 'Pending',
                     submittedAt: serverTimestamp(),
                 });
