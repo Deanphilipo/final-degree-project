@@ -164,8 +164,6 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
         });
     };
 
-    const photoRef = form.register("photos");
-
     return (
         <Card>
             <CardHeader>
@@ -206,15 +204,31 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                                 <SelectItem value="Yes">Yes</SelectItem>
                             </SelectContent></Select><FormMessage /></FormItem>
                         )} />
-                        <FormField control={form.control} name="photos" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Upload Photos (Up to 3, Optional)</FormLabel>
-                                <FormControl>
-                                    <Input type="file" multiple accept="image/*" {...photoRef} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
+                        <FormField
+                            control={form.control}
+                            name="photos"
+                            render={({ field }) => {
+                                return (
+                                <FormItem>
+                                    <FormLabel>Upload Photos (Up to 3, Optional)</FormLabel>
+                                    <FormControl>
+                                    <Input
+                                        type="file"
+                                        multiple
+                                        accept="image/*"
+                                        onBlur={field.onBlur}
+                                        name={field.name}
+                                        onChange={(e) => {
+                                            field.onChange(e.target.files);
+                                        }}
+                                        ref={field.ref}
+                                    />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                );
+                            }}
+                        />
 
                         <Button type="submit" disabled={isPending}>
                             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Submit for Repair
@@ -225,3 +239,5 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
         </Card>
     );
 }
+
+    
