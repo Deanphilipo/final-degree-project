@@ -18,7 +18,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
-import { summarizeIssue } from '@/ai/flows/summarize-issue';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -64,15 +63,6 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
 
     const photoRef = form.register("photos");
     
-    const readFileAsDataURL = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-    }
-
     const onSubmit = (values: FormValues) => {
         if (!user) {
             toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to submit a console.' });
@@ -87,16 +77,16 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                 const photoFiles = photoFileList ? Array.from(photoFileList) : [];
                 
                 if (photoFiles.length > 3) {
-                    toast({ variant: 'destructive', title: 'Validation Error', description: 'You can upload up to 3 photos.' });
+                    form.setError('photos', { type: 'manual', message: 'You can upload up to 3 photos.' });
                     return;
                 }
                 for (const file of photoFiles) {
                     if (file.size > MAX_FILE_SIZE) {
-                        toast({ variant: 'destructive', title: 'Validation Error', description: `Max file size is 5MB.` });
+                         form.setError('photos', { type: 'manual', message: `Max file size is 5MB.` });
                         return;
                     }
                     if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-                        toast({ variant: 'destructive', title: 'Validation Error', description: '.jpg, .jpeg, .png and .webp files are accepted.' });
+                        form.setError('photos', { type: 'manual', message: '.jpg, .jpeg, .png and .webp files are accepted.' });
                         return;
                     }
                 }
@@ -116,27 +106,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                     return;
                 }
                 
-                // 2. Handle AI summary
-                let photoDataUris: string[] = [];
-                if (photoFiles.length > 0) {
-                   photoDataUris = await Promise.all(photoFiles.map(file => readFileAsDataURL(file)));
-                }
-
-                let aiSummary = 'No summary generated.';
-                if (photoDataUris.length > 0 || values.additionalNotes) {
-                     try {
-                        const summaryResult = await summarizeIssue({
-                            photoDataUris,
-                            userNotes: `${values.issueType}. ${values.additionalNotes}`
-                        });
-                        aiSummary = summaryResult.summary;
-                    } catch (aiError) {
-                        console.error("AI summarization failed:", aiError);
-                        aiSummary = "AI summary failed. Proceeding with user notes.";
-                    }
-                }
-                
-                // 3. Upload photos to Firebase Storage
+                // 2. Upload photos to Firebase Storage
                 const photoURLs = await Promise.all(
                     photoFiles.map(async (file) => {
                         const photoId = uuidv4();
@@ -146,12 +116,12 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                     })
                 );
 
-                // 4. Save console data to Firestore
+                // 3. Save console data to Firestore
                 await addDoc(collection(db, 'consoles'), {
                     ...values,
                     userId: userId,
                     photos: photoURLs,
-                    aiSummary,
+                    aiSummary: 'AI summarization disabled.', // AI feature disabled
                     status: 'Pending',
                     submittedAt: serverTimestamp(),
                 });
@@ -162,7 +132,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
 
             } catch (error: any) {
                 console.error("A critical error occurred during submission:", error);
-                toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred. Please check Storage permissions.' });
+                toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred. Please check Storage permissions and rules.' });
             }
         });
     };
@@ -230,5 +200,3 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
         </Card>
     );
 }
-
-    

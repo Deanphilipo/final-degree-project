@@ -10,7 +10,6 @@ import { useToast } from '@/hooks/use-toast';
 import { addDoc, collection, getDocs, serverTimestamp, query, where } from 'firebase/firestore';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
-import { summarizeIssue } from '@/ai/flows/summarize-issue';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -82,15 +81,6 @@ export function AdminAddConsoleForm() {
         }
     });
 
-    const readFileAsDataURL = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-        });
-    }
-
     const onSubmit = (values: FormValues) => {
         if (!isAdmin) {
             toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be an admin to perform this action.' });
@@ -113,26 +103,8 @@ export function AdminAddConsoleForm() {
                     return;
                 }
 
-                // 1. Handle photo uploads and AI summary
+                // 1. Handle photo uploads
                 const photoFiles = values.photos ? Array.from(values.photos) : [];
-                let photoDataUris: string[] = [];
-                if (photoFiles.length > 0) {
-                   photoDataUris = await Promise.all(photoFiles.map(file => readFileAsDataURL(file)));
-                }
-
-                let aiSummary = 'No summary generated.';
-                if (photoDataUris.length > 0 || values.additionalNotes) {
-                     try {
-                        const summaryResult = await summarizeIssue({
-                            photoDataUris,
-                            userNotes: `${values.issueType}. ${values.additionalNotes}`
-                        });
-                        aiSummary = summaryResult.summary;
-                    } catch (aiError) {
-                        console.error("AI summarization failed:", aiError);
-                        aiSummary = "AI summary failed. Proceeding with user notes.";
-                    }
-                }
                 
                 // 2. Upload photos to Firebase Storage
                 const photoURLs = await Promise.all(
@@ -149,7 +121,7 @@ export function AdminAddConsoleForm() {
                 await addDoc(collection(db, 'consoles'), {
                     ...consoleData,
                     photos: photoURLs,
-                    aiSummary,
+                    aiSummary: 'AI summarization disabled.', // AI feature disabled
                     status: 'Pending',
                     submittedAt: serverTimestamp(),
                 });
@@ -228,5 +200,3 @@ export function AdminAddConsoleForm() {
         </Card>
     );
 }
-
-    
