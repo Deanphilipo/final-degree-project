@@ -63,15 +63,6 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
         }
     });
 
-    const readFileAsDataURL = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = (error) => reject(error);
-            reader.readAsDataURL(file);
-        });
-    };
-
     const onSubmit = (values: FormValues) => {
         if (!user) {
             toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to submit a console.' });
@@ -119,23 +110,8 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                     return;
                 }
                 
-
-                // 1. Handle AI summary
-                let aiSummary = 'No summary generated.';
-                if (photoFiles.length > 0 || values.additionalNotes) {
-                     try {
-                        const photoDataUris = await Promise.all(photoFiles.map(file => readFileAsDataURL(file)));
-                        const summaryResult = await summarizeIssue({
-                            photoDataUris,
-                            userNotes: `${values.issueType}. ${values.additionalNotes}`
-                        });
-                        aiSummary = summaryResult.summary;
-                    } catch (aiError) {
-                        console.error("AI summarization failed:", aiError);
-                        toast({ variant: 'destructive', title: 'AI Error', description: 'The AI summary could not be generated.' });
-                        aiSummary = "AI summary failed. Proceeding with user notes.";
-                    }
-                }
+                // [DEBUG] Temporarily disabling AI Summary
+                const aiSummary = 'AI Summary disabled for debugging.';
                 
                 // 2. Upload photos to Firebase Storage
                 let photoURLs: string[] = [];
@@ -151,9 +127,8 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                 } catch(uploadError) {
                      console.error("Photo upload failed:", uploadError);
                      toast({ variant: 'destructive', title: 'Upload Error', description: 'Could not upload photos to storage.' });
-                     return; // Stop submission if photos fail to upload
+                     return;
                 }
-
 
                 // 3. Save console data to Firestore
                 const { photos, ...consoleData } = values;
@@ -252,5 +227,3 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
         </Card>
     );
 }
-
-    
