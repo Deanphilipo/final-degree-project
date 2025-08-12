@@ -61,9 +61,9 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
             photos: undefined,
         }
     });
-    
-    const photoRef = form.register("photos");
 
+    const photoRef = form.register("photos");
+    
     const readFileAsDataURL = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
