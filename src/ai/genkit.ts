@@ -1,12 +1,14 @@
+'use server';
+
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
-import {firebase} from '@genkit-ai/firebase';
 import 'dotenv/config';
 
 export const ai = genkit({
   plugins: [
-    firebase(),
-    googleAI(),
+    googleAI({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+    }),
   ],
   logLevel: 'debug',
   enableTracingAndMetrics: true,
