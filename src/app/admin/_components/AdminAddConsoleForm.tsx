@@ -4,7 +4,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { addDoc, collection, getDocs, serverTimestamp, query, where } from 'firebase/firestore';
@@ -53,7 +53,7 @@ export function AdminAddConsoleForm() {
     const { toast } = useToast();
     const router = useRouter();
     const [users, setUsers] = useState<UserProfile[]>([]);
-    const [isPending, startTransition] = useTransition();
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
         const fetchUsers = async () => {
@@ -86,80 +86,84 @@ export function AdminAddConsoleForm() {
         }
     });
 
-    const onSubmit = (values: FormValues) => {
+    const onSubmit = async (values: FormValues) => {
         if (!isAdmin) {
             toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be an admin to perform this action.' });
             return;
         }
 
-        startTransition(async () => {
-            try {
-                const consolesRef = collection(db, 'consoles');
-                const q = query(consolesRef, where('serialNumber', '==', values.serialNumber));
-                const querySnapshot = await getDocs(q);
+        setIsSubmitting(true);
+        try {
+            const consolesRef = collection(db, 'consoles');
+            const q = query(consolesRef, where('serialNumber', '==', values.serialNumber));
+            const querySnapshot = await getDocs(q);
 
-                if (!querySnapshot.empty) {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Duplicate Serial Number',
-                        description: 'A console with this serial number has already been submitted.',
-                    });
-                    return;
-                }
-
-                const photoFileList = form.getValues('photos') as FileList | null;
-                const photoFiles = photoFileList ? Array.from(photoFileList) : [];
-
-                if (photoFiles.length > 3) {
-                    toast({ variant: 'destructive', title: 'Validation Error', description: 'You can upload up to 3 photos.' });
-                    return;
-                }
-                for (const file of photoFiles) {
-                    if (file.size > MAX_FILE_SIZE) {
-                        toast({ variant: 'destructive', title: 'Validation Error', description: `Max file size is 5MB.` });
-                        return;
-                    }
-                    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-                        toast({ variant: 'destructive', title: 'Validation Error', description: '.jpg, .jpeg, .png and .webp files are accepted.' });
-                        return;
-                    }
-                }
-
-                const photoURLs = await Promise.all(
-                    photoFiles.map(async (file) => {
-                        const photoId = uuidv4();
-                        const storageRef = ref(storage, `consoles/${values.userId}/${photoId}-${file.name}`);
-                        await uploadBytes(storageRef, file);
-                        const downloadURL = await getDownloadURL(storageRef);
-                        return downloadURL;
-                    })
-                );
-
-                const { photos, ...consoleData } = values;
-                await addDoc(collection(db, 'consoles'), {
-                    ...consoleData,
-                    photos: photoURLs,
-                    status: 'Pending',
-                    submittedAt: serverTimestamp(),
+            if (!querySnapshot.empty) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Duplicate Serial Number',
+                    description: 'A console with this serial number has already been submitted.',
                 });
+                setIsSubmitting(false);
+                return;
+            }
 
-                toast({ title: 'Success', description: 'Console has been submitted for repair.' });
-                form.reset();
-                router.push('/admin');
+            const photoFileList = form.getValues('photos') as FileList | null;
+            const photoFiles = photoFileList ? Array.from(photoFileList) : [];
 
-            } catch (error: any) {
-                console.error("Submission Error: ", error);
-                 if (error.code === 'storage/unauthorized') {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Storage Permission Error',
-                        description: 'You do not have permission to upload files. Please check your Firebase Storage security rules.'
-                    });
-                } else {
-                    toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred.' });
+            if (photoFiles.length > 3) {
+                toast({ variant: 'destructive', title: 'Validation Error', description: 'You can upload up to 3 photos.' });
+                setIsSubmitting(false);
+                return;
+            }
+            for (const file of photoFiles) {
+                if (file.size > MAX_FILE_SIZE) {
+                    toast({ variant: 'destructive', title: 'Validation Error', description: `Max file size is 5MB.` });
+                    setIsSubmitting(false);
+                    return;
+                }
+                if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+                    toast({ variant: 'destructive', title: 'Validation Error', description: '.jpg, .jpeg, .png and .webp files are accepted.' });
+                    setIsSubmitting(false);
+                    return;
                 }
             }
-        });
+
+            const photoURLs = await Promise.all(
+                photoFiles.map(async (file) => {
+                    const photoId = uuidv4();
+                    const storageRef = ref(storage, `consoles/${values.userId}/${photoId}-${file.name}`);
+                    await uploadBytes(storageRef, file);
+                    const downloadURL = await getDownloadURL(storageRef);
+                    return downloadURL;
+                })
+            );
+
+            const { photos, ...consoleData } = values;
+            await addDoc(collection(db, 'consoles'), {
+                ...consoleData,
+                photos: photoURLs,
+                status: 'Pending',
+                submittedAt: serverTimestamp(),
+            });
+
+            toast({ title: 'Success', description: 'Console has been submitted for repair.' });
+            form.reset();
+            router.push('/admin');
+
+        } catch (error: any) {
+             if (error.code === 'storage/unauthorized') {
+                toast({
+                    variant: 'destructive',
+                    title: 'Storage Permission Error',
+                    description: 'You do not have permission to upload files. Please check your Firebase Storage security rules.'
+                });
+            } else {
+                toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred.' });
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const photoRef = form.register("photos");
@@ -217,8 +221,8 @@ export function AdminAddConsoleForm() {
                             <FormItem><FormLabel>Upload Photos (Up to 3)</FormLabel><FormControl><Input type="file" multiple accept="image/*" {...photoRef} /></FormControl><FormMessage /></FormItem>
                         )} />
 
-                        <Button type="submit" disabled={isPending}>
-                            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Submit for Repair
+                        <Button type="submit" disabled={isSubmitting}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Submit for Repair
                         </Button>
                     </form>
                 </Form>
