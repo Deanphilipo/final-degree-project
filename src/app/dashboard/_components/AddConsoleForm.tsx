@@ -23,16 +23,23 @@ import { v4 as uuidv4 } from 'uuid';
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
-// Simplified schema without file validation
+// Schema now correctly handles optional photos and numeric input for storage
 const formSchema = z.object({
     consoleType: z.string().min(1, 'Console type is required.'),
     serialNumber: z.string().min(1, 'Serial number is required.'),
     color: z.string().min(1, 'Color is required.'),
-    storageCapacity: z.coerce.number().positive('Storage capacity must be a positive number.'),
-    issueType: z.enum(["Doesn't power on", "HDMI port broken", "Overheating", "Disk not reading"]),
+    storageCapacity: z.preprocess(
+        (val) => (val === "" ? undefined : val),
+        z.coerce.number({ invalid_type_error: 'Must be a number' }).positive('Storage capacity must be a positive number.')
+    ),
+    issueType: z.enum(["Doesn't power on", "HDMI port broken", "Overheating", "Disk not reading"], {
+        required_error: "You need to select an issue type.",
+    }),
     additionalNotes: z.string().optional(),
-    pastRepairs: z.enum(['Yes', 'No']),
-    photos: z.any(), // We will handle validation in onSubmit
+    pastRepairs: z.enum(['Yes', 'No'], {
+        required_error: "You need to select a past repair status.",
+    }),
+    photos: z.any().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -52,7 +59,6 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
             consoleType: '',
             serialNumber: '',
             color: '',
-            storageCapacity: undefined,
             issueType: undefined,
             additionalNotes: '',
             pastRepairs: undefined,
@@ -157,7 +163,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                 form.reset();
                 onFormSubmit();
             } catch (error: any) {
-                console.error(error);
+                console.error("Submission failed:", error);
                 toast({ variant: 'destructive', title: 'Submission Error', description: error.message || 'An unexpected error occurred.' });
             }
         });
@@ -185,7 +191,7 @@ export function AddConsoleForm({ onFormSubmit }: AddConsoleFormProps) {
                                 <FormItem><FormLabel>Color</FormLabel><FormControl><Input placeholder="e.g., White" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                              <FormField control={form.control} name="storageCapacity" render={({ field }) => (
-                                <FormItem><FormLabel>Storage Capacity (GB)</FormLabel><FormControl><Input type="number" placeholder="e.g., 825" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
+                                <FormItem><FormLabel>Storage Capacity (GB)</FormLabel><FormControl><Input type="number" placeholder="e.g., 825" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                         </div>
                         <FormField control={form.control} name="issueType" render={({ field }) => (
