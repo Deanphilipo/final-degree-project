@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { badgeVariants } from '@/components/ui/badge';
 
 type Status = Console['status'];
 
@@ -107,14 +108,21 @@ export function AdminConsoleList() {
       })
   }
 
-  const getStatusVariant = (status: Console['status']): "default" | "secondary" | "destructive" => {
+  const getStatusVariant = (status: Console['status']): VariantProps<typeof badgeVariants>['variant'] => {
     switch (status) {
-      case 'Fixed': return 'default';
-      case 'Returned': return 'default';
-      case 'Pending': return 'secondary';
-      case 'In Progress': return 'secondary';
-      case 'Cannot be Fixed': return 'destructive';
-      default: return 'secondary';
+      case 'Fixed':
+      case 'Returned':
+        return 'success';
+      case 'Pending':
+        return 'secondary';
+      case 'In Progress':
+        return 'default';
+      case 'Awaiting Parts':
+        return 'warning';
+      case 'Cannot be Fixed':
+        return 'destructive';
+      default:
+        return 'secondary';
     }
   };
 

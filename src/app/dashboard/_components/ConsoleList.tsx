@@ -14,11 +14,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { type VariantProps } from 'class-variance-authority';
 
 export function ConsoleList() {
   const { user, loading: authLoading } = useAuth();
@@ -52,15 +53,18 @@ export function ConsoleList() {
     return () => unsubscribe();
   }, [user, authLoading, router]);
 
-  const getStatusVariant = (status: Console['status']): "default" | "secondary" | "destructive" => {
+  const getStatusVariant = (status: Console['status']): VariantProps<typeof badgeVariants>['variant'] => {
     switch (status) {
       case 'Fixed':
       case 'Returned':
-        return 'default';
+        return 'success';
       case 'Pending':
-      case 'In Progress':
         return 'secondary';
-       case 'Cannot be Fixed':
+      case 'In Progress':
+        return 'default';
+      case 'Awaiting Parts':
+        return 'warning';
+      case 'Cannot be Fixed':
         return 'destructive';
       default:
         return 'secondary';
