@@ -38,6 +38,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 type Status = Console['status'];
 
@@ -141,8 +142,8 @@ export function AdminConsoleList() {
                 </TableRow>
                 </TableHeader>
                 <TableBody>
-                {consoles.map((c) => (
-                    <TableRow key={c.id}>
+                {consoles.map((c, index) => (
+                    <TableRow key={c.id} className={cn(index % 2 === 0 ? 'bg-muted/25' : '')}>
                         <TableCell>
                             <div className="font-medium">{c.userEmail}</div>
                             <div className="text-xs text-muted-foreground">{c.userId}</div>

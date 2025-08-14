@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 export function ConsoleList() {
   const { user, loading: authLoading } = useAuth();
@@ -100,8 +101,8 @@ export function ConsoleList() {
                 </TableRow>
                 </TableHeader>
                 <TableBody>
-                {consoles.map((c) => (
-                    <TableRow key={c.id}>
+                {consoles.map((c, index) => (
+                    <TableRow key={c.id} className={cn(index % 2 === 0 ? 'bg-muted/25' : '')}>
                         <TableCell>
                           <div className="font-medium">{c.consoleType}</div>
                           <div className="text-xs text-muted-foreground">{c.color} - {c.storageCapacity}GB</div>
