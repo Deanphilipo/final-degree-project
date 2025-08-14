@@ -34,7 +34,7 @@ export function AdminDashboardSidebar({ view, setView }: AdminDashboardSidebarPr
       <div className="flex h-14 items-center border-b p-4 lg:h-[60px] lg:px-6">
         <Logo />
       </div>
-      <div className="flex-1">
+      <div className="flex-1 overflow-y-auto">
         <ul className="flex flex-col items-start gap-2 px-2 text-sm font-medium lg:px-4 py-4">
             <li className="w-full">
                 <div className="flex items-center gap-2 p-2 rounded-md bg-muted w-full">
@@ -59,7 +59,7 @@ export function AdminDashboardSidebar({ view, setView }: AdminDashboardSidebarPr
             </li>
         </ul>
       </div>
-      <div className="mt-auto p-4">
+      <div className="mt-auto p-4 border-t">
         <Button variant="ghost" className="w-full justify-start gap-2" onClick={handleLogout}>
           <LogOut className="h-4 w-4" />
           Logout
