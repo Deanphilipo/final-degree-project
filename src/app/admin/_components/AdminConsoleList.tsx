@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import { Badge, badgeVariants } from '@/components/ui/badge';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { badgeVariants } from '@/components/ui/badge';
+import { type VariantProps } from 'class-variance-authority';
 
 type Status = Console['status'];
 
@@ -159,6 +159,7 @@ export function AdminConsoleList() {
                         <TableCell>
                             <div className="font-medium">{c.consoleType}</div>
                             <div className="text-xs text-muted-foreground">SN: {c.serialNumber}</div>
+                            <div className="text-xs text-muted-foreground">{c.storageCapacity}GB</div>
                         </TableCell>
                         <TableCell>
                              <Tooltip>
