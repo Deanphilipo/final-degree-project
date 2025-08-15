@@ -21,7 +21,7 @@ export default function AuthPage() {
       </div>
       <div className="hidden bg-muted lg:block">
         <Image
-          src="https://placehold.co/1200x900.png"
+          src="/images/power.png"
           data-ai-hint="gaming setup console"
           alt="Image"
           width="1920"

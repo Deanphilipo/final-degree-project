@@ -29,7 +29,7 @@ export function DashboardSidebar({ view, setView }: DashboardSidebarProps) {
       <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
         <Logo />
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
         <nav className="grid items-start px-2 text-sm font-medium lg:px-4 py-4">
             <div className="flex items-center gap-2 p-2 rounded-md bg-muted w-full mb-4">
                 <User className="h-5 w-5 text-muted-foreground" />

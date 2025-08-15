@@ -21,7 +21,7 @@ export function Hero() {
             </div>
           </div>
           <Image
-            src="https://placehold.co/600x400.png"
+            src="/images/repair store.png"
             data-ai-hint="gaming console repair"
             width="600"
             height="400"

@@ -5,37 +5,37 @@ const services = [
   {
     title: "HDMI Port Repair",
     description: "No signal on your TV? We can replace your console's faulty HDMI port.",
-    image: "https://placehold.co/400x300.png",
+    image: "/images/hdmi.png",
     hint: "hdmi port"
   },
   {
     title: "Overheating Issues",
     description: "If your console is shutting down unexpectedly, we'll clean and fix its cooling system.",
-    image: "https://placehold.co/400x300.png",
+    image: "/images/6kp6eu9s (1).png",
     hint: "console fan"
   },
   {
     title: "Disk Drive Problems",
     description: "Games not reading? We can repair or replace your console's Blu-ray or DVD drive.",
-    image: "https://placehold.co/400x300.png",
+    image: "/images/xeptlio1.png",
     hint: "game disc"
   },
   {
     title: "Power Supply Failure",
     description: "Console not turning on at all? We'll diagnose and replace the internal power supply.",
-    image: "https://placehold.co/400x300.png",
+    image: "/images/power.png",
     hint: "power cord"
   },
   {
     title: "Controller Repair",
     description: "Stick drift, broken buttons, or connection issues? We fix controllers too!",
-    image: "https://placehold.co/400x300.png",
+    image: "/images/controler.png",
     hint: "game controller"
   },
   {
     title: "Software & OS Issues",
     description: "Stuck in a boot loop or facing system errors? We can resolve software-related problems.",
-    image: "https://placehold.co/400x300.png",
+    image: "/images/ynmtuqg2.png",
     hint: "error screen"
   },
 ];

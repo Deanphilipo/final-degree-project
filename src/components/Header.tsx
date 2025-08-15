@@ -21,9 +21,9 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center">
         <div className="mr-4 flex">
-          <Logo />
+ <Logo />
         </div>
-        <nav className="flex items-center space-x-6 text-sm font-medium">
+ <nav className="flex flex-1 justify-center items-center space-x-6 text-sm font-medium">
           <Link href="/#home">Home</Link>
           <Link href="/#services">Services</Link>
           <Link href="/#faq">FAQ</Link>
@@ -31,7 +31,7 @@ export function Header() {
         <div className="flex flex-1 items-center justify-end space-x-4">
           {loading ? (
             <div className="h-9 w-20 animate-pulse rounded-md bg-muted" />
-          ) : user ? (
+ ) : user ? (
             <>
               <Button variant="ghost" asChild>
                 <Link href="/dashboard">Dashboard</Link>
@@ -39,7 +39,7 @@ export function Header() {
               <Button onClick={handleLogout}>Logout</Button>
             </>
           ) : (
-            <>
+ <>
               <Button variant="ghost" asChild>
                 <Link href="/auth">Sign In</Link>
               </Button>
