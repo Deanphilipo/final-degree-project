@@ -1,4 +1,5 @@
 
+export const runtime = 'edge';
 import { AdminEditConsoleView } from "../../_components/AdminEditConsoleView";
 
 export default function AdminEditConsolePage({ params }: { params: { id: string } }) {
