@@ -21,7 +21,7 @@ export function Hero() {
             </div>
           </div>
           <Image
-            src="/images/repair store.png"
+            src="/images/repairstore.png"
             data-ai-hint="gaming console repair"
             width="600"
             height="400"
