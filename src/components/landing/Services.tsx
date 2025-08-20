@@ -11,7 +11,7 @@ const services = [
   {
     title: "Overheating Issues",
     description: "If your console is shutting down unexpectedly, we'll clean and fix its cooling system.",
-    image: "/images/6kp6eu9s (1).png",
+    image: "/images/heat.png",
     hint: "console fan"
   },
   {
